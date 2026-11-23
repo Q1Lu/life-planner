@@ -2,7 +2,28 @@
 
 一個網頁就搞定：**行事曆（可與 Google 日曆同步）＋ 待辦（含截止倒數） ＋ 記帳 ＋ 習慣紀錄 ＋ 番茄鐘**。
 
-純前端單一檔案（`index.html`），不需要安裝、不需要後端伺服器。
+純前端（HTML + CSS + JavaScript），不需要安裝、不需要後端伺服器。
+
+## 檔案結構
+
+```
+index.html            網頁骨架（各分頁、彈出視窗的 HTML）
+css/style.css         所有外觀樣式（深淺色、版面）
+js/core.js            資料存取、共用小工具、分頁切換、深淺色
+js/calendar.js        📅 行事曆（年／月／週／日／列表、拖曳、側邊選單、行程編輯）
+js/todo.js            ✅ 待辦與截止倒數
+js/money.js           💰 記帳
+js/backup.js          匯出／匯入備份
+js/google-calendar.js Google 日曆同步
+js/drive-sync.js      Google 雲端硬碟資料同步
+js/habits.js          時間格式工具、⏱ 計時習慣
+js/daily-rank.js      每日任務、RANK 段位、Routine
+js/health.js          ❤️ 健康（體重、血壓、InBody）
+js/pomodoro.js        🍅 番茄鐘、頂部小計時器
+js/main.js            啟動（最後載入）
+```
+
+JS 檔是一般的 `<script>`（不是 module），依 `index.html` 裡的順序載入、共用同一組全域變數，所以**順序不能亂換**；新增檔案時放在 `main.js` 前面。
 
 ## 功能
 
