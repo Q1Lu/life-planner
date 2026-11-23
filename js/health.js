@@ -2,7 +2,7 @@
    每天一筆體重（w|日期）、早晚各一筆血壓（bp|日期|m 或 e）、每次 InBody 一筆（ib|日期）。固定 id → 同一天再輸入就是修改。 */
 const IB_FIELDS=[['weight','體重','kg',0.1],['smm','骨骼肌重','kg',0.1],['bfm','體脂肪重','kg',0.1],['pbf','體脂率','%',0.1],['bmi','BMI','',0.1],['vfl','內臟脂肪等級','',1],['bmr','基礎代謝','kcal',1],['score','InBody 分數','分',1]];
 const BP_SLOT={m:'早上',e:'晚上'};
-let hlRange=30, hlDate=todayStr(), bpSlot=new Date().getHours()<15?'m':'e', ibEditing=null;
+let hlRange=30, hlDate=habitDay(), bpSlot=(h=>h>=DAY_START_HOUR&&h<15?'m':'e')(new Date().getHours()), ibEditing=null;
 const hRec=id=>db.health.find(x=>x.id===id);
 function hPut(rec){const r=hRec(rec.id); if(r){Object.keys(r).forEach(k=>{if(!(k in rec)&&k!=='u') delete r[k];}); Object.assign(r,rec);} else db.health.push(rec); save();}
 const hOf=type=>db.health.filter(x=>x.type===type).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.slot||'')<(b.slot||'')?-1:1);
@@ -22,7 +22,7 @@ function weightSeries(){
   return [...m.entries()].sort((a,b)=>a[0]<b[0]?-1:1);
 }
 function lineChart(series,{days,refs=[],unit=''}){
-  const t=todayStr(), from=addDays(t,-days+1), x0=parse(from).getTime(), x1=parse(t).getTime();
+  const t=habitDay(), from=addDays(t,-days+1), x0=parse(from).getTime(), x1=parse(t).getTime();
   const pts=series.flatMap(sr=>sr.pts.filter(p=>p[0]>=from&&p[0]<=t));
   if(!pts.length) return '<div class="muted" style="padding:20px 0;text-align:center">這段期間還沒有資料</div>';
   let lo=Math.min(...pts.map(p=>p[1]),...refs.map(r=>r.y)), hi=Math.max(...pts.map(p=>p[1]),...refs.map(r=>r.y));
@@ -42,7 +42,7 @@ function lineChart(series,{days,refs=[],unit=''}){
   return `<svg viewBox="0 0 ${W} ${H}" class="lc" role="img">${g}</svg>`;
 }
 function renderHealth(){
-  const t=todayStr();
+  const t=habitDay();
   $('hlDate').value=hlDate;
   document.querySelectorAll('#bpSlot .pbtn').forEach(b=>b.classList.toggle('on',b.dataset.s===bpSlot));
   document.querySelectorAll('#hlRange .pbtn').forEach(b=>b.classList.toggle('on',+b.dataset.r===hlRange));
@@ -88,7 +88,7 @@ function renderHealth(){
       :`<li><span>🩺</span><span class="grow">${r.sys}/${r.dia}${r.pulse?` · 脈搏 ${r.pulse}`:''} <span class="bp-tag" style="background:${bpClass(r.sys,r.dia)[1]}">${bpClass(r.sys,r.dia)[0]}</span><div class="muted" style="font-size:12px">${r.date} ${BP_SLOT[r.slot]}</div></span><button class="x" data-hdel="${r.id}">✕</button></li>`).join('')
     ||'<li class="muted">還沒有紀錄</li>';
 }
-$('hlDate').onchange=e=>{hlDate=e.target.value||todayStr(); renderHealth();};
+$('hlDate').onchange=e=>{hlDate=e.target.value||habitDay(); renderHealth();};
 $('bpSlot').onclick=e=>{const b=e.target.closest('[data-s]'); if(b){bpSlot=b.dataset.s; renderHealth();}};
 $('hlRange').onclick=e=>{const b=e.target.closest('[data-r]'); if(b){hlRange=+b.dataset.r; renderHealth();}};
 $('wForm').onsubmit=e=>{e.preventDefault(); const v=Math.round(+$('wVal').value*10)/10; if(!v) return;
@@ -107,7 +107,7 @@ $('ibFields').innerHTML=IB_FIELDS.map(([k,n,u,st])=>`<div><label>${n}${u?`（${u
 function openIb(date){
   ibEditing=date?hRec('ib|'+date):null;
   $('ibTitle').textContent=ibEditing?'修改 InBody 紀錄':'新增 InBody 紀錄';
-  $('ibDate').value=ibEditing?.date||todayStr();
+  $('ibDate').value=ibEditing?.date||habitDay();
   IB_FIELDS.forEach(([k])=>$('ib_'+k).value=ibEditing?.[k]??'');
   $('ibNote').value=ibEditing?.note||'';
   $('ibDel').classList.toggle('hidden',!ibEditing);
