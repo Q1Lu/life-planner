@@ -24,6 +24,9 @@ const parse=s=>{const[a,b,c]=s.split('-').map(Number);return new Date(a,b-1,c)};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>'$'+Math.round(n).toLocaleString();
 const todayStr=()=>ymd(new Date());
+// 習慣、每日任務、段位、番茄鐘的「今天」：凌晨 4 點前還算前一天（熬夜時打勾才會記在對的日子）
+const DAY_START_HOUR=4;
+const habitDay=()=>{const d=new Date(); if(d.getHours()<DAY_START_HOUR) d.setDate(d.getDate()-1); return ymd(d);};
 const dayDiff=s=>Math.round((parse(s)-parse(todayStr()))/864e5);
 const ls=(k,v)=>{try{if(v===undefined) return localStorage.getItem(k); if(v===null) localStorage.removeItem(k); else localStorage.setItem(k,v);}catch(e){}};
 const jget=k=>{try{return JSON.parse(ls(k))}catch(e){return null}};

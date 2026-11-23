@@ -4,7 +4,7 @@ const SLOTS={m:'早',n:'午',e:'晚'};
 const RANKS=[['青銅',0,'#c08457'],['白銀',150,'#9aa6b5'],['黃金',600,'#d4a72c'],['白金',1800,'#3fb8b0'],['鑽石',4000,'#5b8cff'],['大師',8000,'#b06cff']];
 const RANK_RATE=0.8;                       // 一天完成 80% 以上算「達標日」
 const XP_RULE={day:10,perfect:15,pomoMin:5,todo:5,todoImp:10,onTime:3};
-let hDay=todayStr(), hEdit=false, hIdx=new Map(), suppSel={};
+let hDay=habitDay(), hEdit=false, hIdx=new Map(), suppSel={};
 const byOrder=(a,b)=>(a.order||0)-(b.order||0);
 const doneId=(ds,it,s)=>`${ds}|${it.id}|${s||''}`;
 const getVal=(ds,it,s)=>hIdx.get(doneId(ds,it,s))?.val||0;
@@ -50,15 +50,15 @@ function todoXp(t){
   if(t.done){
     if(r&&r.pts>0) return;
     const dl=deadline(t), pts=(t.pri===3?XP_RULE.todoImp:XP_RULE.todo)+(dl&&Date.now()<=dl?XP_RULE.onTime:0);
-    if(r) Object.assign(r,{pts,date:todayStr(),title:t.text}); else db.xp.push({id,src:'todo',ref:t.id,title:t.text,pts,date:todayStr()});
+    if(r) Object.assign(r,{pts,date:habitDay(),title:t.text}); else db.xp.push({id,src:'todo',ref:t.id,title:t.text,pts,date:habitDay()});
   }else if(r) r.pts=0;
 }
-db.todos.filter(t=>t.done&&!db.xp.some(x=>x.id==='xp|'+t.id)).forEach(t=>db.xp.push({id:'xp|'+t.id,src:'todo',ref:t.id,title:t.text,pts:t.pri===3?XP_RULE.todoImp:XP_RULE.todo,date:todayStr()}));
+db.todos.filter(t=>t.done&&!db.xp.some(x=>x.id==='xp|'+t.id)).forEach(t=>db.xp.push({id:'xp|'+t.id,src:'todo',ref:t.id,title:t.text,pts:t.pri===3?XP_RULE.todoImp:XP_RULE.todo,date:habitDay()}));
 
 const habitXpOf=st=>st.total&&st.rate>=1?XP_RULE.perfect:st.rate>=RANK_RATE?XP_RULE.day:0;
 function rankInfo(){
   hIdx=new Map(db.hdone.map(r=>[r.id,r]));
-  const t=todayStr(), dates=db.hdone.filter(r=>r.val>0).map(r=>r.date).sort();
+  const t=habitDay(), dates=db.hdone.filter(r=>r.val>0).map(r=>r.date).sort();
   let habit=0, days=0, streak=0;
   if(dates.length){
     for(let d=dates[0]; d<=t; d=addDays(d,1)){const x=habitXpOf(dayStat(d)); habit+=x; if(x) days++;}
@@ -73,7 +73,7 @@ function rankInfo(){
   return {total,habit,pomo,todo,days,streak,today,cur:RANKS[i],next:RANKS[i+1],ti:i};
 }
 function renderRank(R=rankInfo()){
-  const [name,min,color]=R.cur, st=dayStat(todayStr()), tt=R.today.habit+R.today.pomo+R.today.todo;
+  const [name,min,color]=R.cur, st=dayStat(habitDay()), tt=R.today.habit+R.today.pomo+R.today.todo;
   const pct=R.next?(R.total-min)/(R.next[1]-min)*100:100;
   const el=$('hRank'); el.style.setProperty('--rk',color);
   el.innerHTML=`<div class="rk-top"><span class="rk-label">RANK</span><span class="rk-name">${name}</span>
@@ -109,7 +109,7 @@ function toast(msg,color){
 }
 function renderRankPage(R=rankInfo()){
   renderRank(R); document.querySelector('#hRank details')?.setAttribute('open','');
-  const t=todayStr(), days=Array.from({length:14},(_,i)=>addDays(t,i-13));
+  const t=habitDay(), days=Array.from({length:14},(_,i)=>addDays(t,i-13));
   const pp=p=>Math.floor(p.min/XP_RULE.pomoMin);
   const rows=days.map(d=>({d,h:habitXpOf(dayStat(d)),p:db.pomos.filter(x=>x.date===d).reduce((s,x)=>s+pp(x),0),t:db.xp.filter(x=>x.date===d).reduce((s,x)=>s+(x.pts||0),0)}));
   const mx=Math.max(20,...rows.map(r=>r.h+r.p+r.t));
@@ -124,12 +124,12 @@ function renderRankPage(R=rankInfo()){
 $('rankPill').onclick=()=>{goTab('rank'); scrollTo({top:0});};
 updateRankPill();
 
-let hStatMode=ls('hStatMode')||'streak', hsView='week', hsAnchor=todayStr();
+let hStatMode=ls('hStatMode')||'streak', hsView='week', hsAnchor=habitDay();
 const ICOL=['#6aa3f5','#f6c453','#ef5350','#3ecf8e','#4fb3e8','#7dd3d8','#d4d43c','#a259f7','#f062b0','#a8d5a2','#e8a184','#8c9eff'];
 const itemColor=it=>ICOL[[...it.id].reduce((h,c)=>(h*31+c.charCodeAt(0))>>>0,7)%ICOL.length];
 const doneOn=(it,d)=>scheduled(it,d)&&isDone(d,it);
 function itemStreak(it){        // 往回數連續完成的天數（今天還沒做就從昨天算；不用做的日子跳過）
-  let d=todayStr(), n=0, guard=0; if(!doneOn(it,d)) d=addDays(d,-1);
+  let d=habitDay(), n=0, guard=0; if(!doneOn(it,d)) d=addDays(d,-1);
   while(guard++<1500){ if(it.created&&d<it.created) break;
     if(!scheduled(it,d)){d=addDays(d,-1); continue;} if(!isDone(d,it)) break; n++; d=addDays(d,-1); }
   return n;
@@ -141,7 +141,7 @@ function itemTotal(it){
 function renderHabStats(){
   hIdx=new Map(db.hdone.map(r=>[r.id,r]));
   document.querySelectorAll('#hsSeg .pbtn').forEach(b=>b.classList.toggle('on',b.dataset.v===hsView));
-  const t=todayStr(), items=[...db.hgroups].sort(byOrder).flatMap(g=>db.hitems.filter(i=>i.groupId===g.id).sort(byOrder));
+  const t=habitDay(), items=[...db.hgroups].sort(byOrder).flatMap(g=>db.hitems.filter(i=>i.groupId===g.id).sort(byOrder));
   if(!items.length){$('hsBody').innerHTML='<div class="muted">還沒有每日任務</div>'; return;}
   if(hsView==='week'){
     const ws=weekStart(hsAnchor), days=Array.from({length:7},(_,i)=>addDays(ws,i)), we=parse(days[6]), wsD=parse(ws);
@@ -169,7 +169,7 @@ const hsShift=n=>{if(hsView==='week') hsAnchor=addDays(hsAnchor,7*n); else{const
 $('hsPrev').onclick=()=>hsShift(-1); $('hsNext').onclick=()=>hsShift(1);
 
 function renderHabWeek(){
-  const t=todayStr(), ws=weekStart(hDay); let sum=0, ok=0;
+  const t=habitDay(), ws=weekStart(hDay); let sum=0, ok=0;
   $('hWeek').innerHTML=Array.from({length:7},(_,i)=>{
     const d=addDays(ws,i), st=dayStat(d), future=d>t, pct=Math.round(st.rate*100), good=st.rate>=RANK_RATE;
     if(!future){sum+=st.rate; if(good) ok++;}
@@ -183,7 +183,7 @@ $('hWeek').onclick=e=>{const b=e.target.closest('[data-d]'); if(b){hDay=b.datase
 function renderDaily(){
   hIdx=new Map(db.hdone.map(r=>[r.id,r]));
   renderHabWeek();
-  const d=parse(hDay), t=todayStr();
+  const d=parse(hDay), t=habitDay();
   $('hdTitle').textContent=`${d.getMonth()+1}/${d.getDate()}（${WD[d.getDay()]}）${hDay===t?' 今天':''}`;
   const st=dayStat(hDay); $('hdCount').textContent=`今日任務 ${st.done} / ${st.total}`;
   $('hEditBtn').textContent=hEdit?'✓ 完成':'✏️ 編輯';
@@ -308,7 +308,7 @@ $('hiForm').onsubmit=e=>{e.preventDefault();
   }
   if(type==='supp') Object.assign(d,{slots:Object.keys(SLOTS).filter(s=>hiSlots.includes(s)),must:$('hiMust').checked});
   if(hiEditing){['target','unit','step','habitId','slots','must'].forEach(k=>delete hiEditing[k]); Object.assign(hiEditing,d);}
-  else db.hitems.push({id:uid(),order:Date.now(),created:todayStr(),...d});
+  else db.hitems.push({id:uid(),order:Date.now(),created:habitDay(),...d});
   save(); closeHi(); renderHabit();};
 
 /* 群組編輯視窗 */

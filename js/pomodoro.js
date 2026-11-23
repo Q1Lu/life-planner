@@ -9,7 +9,7 @@ const pNext=()=>P.mode==='focus'?(P.cycles%PSET.every===0?'long':'short'):'focus
 function pLog(sec){         // 把這段專注時間記到目前的工作上
   const min=Math.round(sec/60); if(min<1) return;
   const t=db.todos.find(x=>x.id===P.todoId);
-  db.pomos.push({id:uid(),todoId:P.todoId||'',title:t?t.text:'',date:todayStr(),min,at:Date.now(),full:sec>=pDur('focus')-1});
+  db.pomos.push({id:uid(),todoId:P.todoId||'',title:t?t.text:'',date:habitDay(),min,at:Date.now(),full:sec>=pDur('focus')-1});
   save();
 }
 function pStart(){
@@ -44,7 +44,7 @@ $('pAddTask').onclick=()=>{const v=$('pNewTask').value.trim(); if(!v) return;
   P.todoId=t.id; pSave(); $('pNewTask').value=''; renderPomo();};
 $('pNewTask').onkeydown=e=>{if(e.key==='Enter') $('pAddTask').click();};
 let pPeriod='today';
-function pRange(){const t=todayStr(); if(pPeriod==='today') return [t,addDays(t,1)]; if(pPeriod==='week'){const s=weekStart(t); return [s,addDays(s,7)];} return ['0000','9999'];}
+function pRange(){const t=habitDay(); if(pPeriod==='today') return [t,addDays(t,1)]; if(pPeriod==='week'){const s=weekStart(t); return [s,addDays(s,7)];} return ['0000','9999'];}
 $('pPeriodSeg').onclick=e=>{const b=e.target.closest('[data-p]'); if(b){pPeriod=b.dataset.p; renderPomo();}};
 $('pLogList').onclick=e=>{const id=e.target.dataset.pdel; if(id&&confirm('刪除這筆專注紀錄？')){db.pomos=db.pomos.filter(p=>p.id!==id); save(); renderPomo();}};
 $('psBox').onchange=()=>{
@@ -62,7 +62,7 @@ function renderPomo(){
   $('pFinish').classList.toggle('hidden',P.mode!=='focus');
   $('pCycle').textContent=`第 ${P.cycles%PSET.every+1} 輪 · 每 ${PSET.every} 輪後長休息一次`;
   pTickUI();
-  const t=todayStr(), today=db.pomos.filter(p=>p.date===t);
+  const t=habitDay(), today=db.pomos.filter(p=>p.date===t);
   $('pToday').innerHTML=`<div class="stat"><div class="muted">今天專注</div><div class="v">${fmtDur(today.reduce((s,p)=>s+p.min,0))}</div></div>`+
     `<div class="stat"><div class="muted">今天完成</div><div class="v">${today.filter(p=>p.full).length} 🍅</div></div>`;
   const [a,b]=pRange(), logs=db.pomos.filter(p=>p.date>=a&&p.date<b), by={};

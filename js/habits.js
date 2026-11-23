@@ -3,7 +3,7 @@ function fmtDur(min){min=Math.round(min); const h=Math.floor(min/60), m=min%60; 
 function fmtClock(sec){sec=Math.max(0,Math.round(sec)); const h=Math.floor(sec/3600), m=Math.floor(sec/60)%60, s=sec%60; return (h?h+':'+pad(m):pad(m))+':'+pad(s);}
 
 /* ---------- 習慣紀錄 ---------- */
-let hPeriod='week', hAnchor=todayStr();
+let hPeriod='week', hAnchor=habitDay();
 function hRange(){
   if(hPeriod==='week'){const s=weekStart(hAnchor); return [s,addDays(s,7)];}
   const d=parse(hAnchor); return [ymd(new Date(d.getFullYear(),d.getMonth(),1)),ymd(new Date(d.getFullYear(),d.getMonth()+1,1))];
@@ -11,7 +11,7 @@ function hRange(){
 const sumMin=(hid,a,b)=>db.habitLogs.filter(l=>l.habitId===hid&&l.date>=a&&l.date<b).reduce((s,l)=>s+l.min,0);
 function streak(hid){   // 連續幾天有紀錄（今天還沒做也從昨天往回算）
   const days=new Set(db.habitLogs.filter(l=>l.habitId===hid).map(l=>l.date));
-  let d=todayStr(), n=0; if(!days.has(d)) d=addDays(d,-1);
+  let d=habitDay(), n=0; if(!days.has(d)) d=addDays(d,-1);
   while(days.has(d)){n++; d=addDays(d,-1);} return n;
 }
 $('habitForm').onsubmit=e=>{e.preventDefault();
@@ -19,7 +19,7 @@ $('habitForm').onsubmit=e=>{e.preventDefault();
   $('hName').value=''; $('hGoal').value=''; save(); renderHabit();};
 function renderHabit(){
   renderDaily(); renderHabStats();
-  const t=todayStr(), ws=weekStart(t), we=addDays(ws,7), d=parse(t);
+  const t=habitDay(), ws=weekStart(t), we=addDays(ws,7), d=parse(t);
   const ms=ymd(new Date(d.getFullYear(),d.getMonth(),1)), me=ymd(new Date(d.getFullYear(),d.getMonth()+1,1));
   $('habitGrid').innerHTML=db.habits.map(h=>{
     const wk=sumMin(h.id,ws,we), mo=sumMin(h.id,ms,me), st=streak(h.id), running=db.habitTimer?.habitId===h.id;
