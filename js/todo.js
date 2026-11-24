@@ -19,6 +19,7 @@ const hasOrd=x=>x.order!=null;
 const todoCmp=(a,b)=>a.done-b.done||hasOrd(a)-hasOrd(b)||
   (hasOrd(a)?a.order-b.order:(deadline(a)??Infinity)-(deadline(b)??Infinity)||b.pri-a.pri);
 function renderTodo(){
+  if(tdDrag) return;   // 拖曳中先不重畫，放開後會重畫
   document.querySelectorAll('.tf').forEach(b=>b.style.borderColor=b.dataset.f===tf?'var(--primary)':'');
   let list=db.todos.filter(x=>tf==='all'||(tf==='done'?x.done:!x.done));
   list.sort(todoCmp);
@@ -29,7 +30,7 @@ function renderTodo(){
     const ddl=dl?`<div class="ddl"><span class="muted">⏰ ${dd.getMonth()+1}/${dd.getDate()}（${WD[dd.getDay()]}）${x.dueTime||'23:59'}</span>`+
       (x.done?'<span class="muted">✔ 已完成</span>':`<span class="cdn ${cdLevel(dl-now)}" data-dl="${dl}">${fmtLeft(dl-now)}</span>`)+'</div>':'';
     const spent=db.pomos.filter(p=>p.todoId===x.id).reduce((s,p)=>s+p.min,0);
-    return `<li data-tid="${x.id}"><input type="checkbox" data-tg="${x.id}" ${x.done?'checked':''}><span class="grow todo-edit" data-edit="${x.id}" title="點一下編輯"><span class="${x.done?'done-text':''}">${priTxt[x.pri]||''} ${esc(x.text)}</span>${ddl}</span>`+
+    return `<li data-tid="${x.id}"><span class="td-handle" title="按住上下拖曳調整順序" aria-label="拖曳排序"><i></i><i></i><i></i><i></i></span><input type="checkbox" data-tg="${x.id}" ${x.done?'checked':''}><span class="grow todo-edit" data-edit="${x.id}" title="點一下編輯"><span class="${x.done?'done-text':''}">${priTxt[x.pri]||''} ${esc(x.text)}</span>${ddl}</span>`+
       (spent?`<span class="tag tomato" title="番茄鐘累計時間">🍅 ${fmtDur(spent)}</span>`:'')+
       (x.done?'':`<button class="x" data-pomo="${x.id}" title="用番茄鐘處理這項">🍅</button>`)+
       `<button class="x" data-del="${x.id}">✕</button></li>`;
@@ -68,7 +69,6 @@ $('tdForm').onsubmit=e=>{e.preventDefault();
   save(); closeTd(); render();};
 
 $('todoList').onclick=e=>{
-  if(tdJustDragged){tdJustDragged=false; e.preventDefault(); return;}   // 拖完放開不要當成點擊
   if(e.target.dataset.tg) toggleTodo(e.target.dataset.tg);
   const ed=e.target.closest('[data-edit]'); if(ed){openTodo(ed.dataset.edit); return;}
   if(e.target.dataset.pomo){   // 用番茄鐘處理這項待辦
@@ -77,11 +77,8 @@ $('todoList').onclick=e=>{
     pSave(); goTab('pomo'); if(!P.running) pStart(); return;}
   if(e.target.dataset.del){db.todos=db.todos.filter(x=>x.id!==e.target.dataset.del);save();renderTodo();}};
 
-/* 長按待辦 → 上下拖曳調整順序（滑鼠、手機都是長按約 0.4 秒） */
-let tdHold=null, tdDrag=null, tdJustDragged=false;
-function tdLift(li){
-  tdDrag={li}; li.classList.add('td-lift'); navigator.vibrate?.(15);
-}
+/* 按住待辦前面的「≡」把手 → 上下拖曳調整順序（滑鼠、手機都一樣，按下就能拖） */
+let tdDrag=null;
 function tdMove(y){
   const li=tdDrag?.li; if(!li) return;
   const ul=$('todoList'), sibs=[...ul.children].filter(x=>x!==li&&x.dataset.tid);
@@ -92,28 +89,23 @@ function tdMove(y){
 }
 function tdDrop(){
   const D=tdDrag; tdDrag=null; if(!D) return;
-  D.li.classList.remove('td-lift'); tdJustDragged=true; setTimeout(()=>tdJustDragged=false,400);
+  D.li.classList.remove('td-lift');
   [...$('todoList').children].forEach((li,i)=>{const t=db.todos.find(x=>x.id===li.dataset.tid); if(t) t.order=i;});
   save(); renderTodo();
 }
-const tdCancelHold=()=>{if(tdHold){clearTimeout(tdHold.timer); tdHold=null;}};
-function tdHoldStart(target,x,y){
-  const li=target.closest('#todoList li[data-tid]'); if(!li||target.closest('button,input')) return;
-  tdCancelHold(); const H=tdHold={x,y,li};
-  H.timer=setTimeout(()=>{if(tdHold===H){tdHold=null; tdLift(li);}},400);
-}
-const tdHoldMove=(x,y)=>{if(tdHold&&Math.hypot(x-tdHold.x,y-tdHold.y)>8) tdCancelHold();};
 {
   const ul=$('todoList');
-  ul.addEventListener('pointerdown',e=>{if(e.pointerType!=='touch'&&e.button===0) tdHoldStart(e.target,e.clientX,e.clientY);});
-  addEventListener('pointermove',e=>{if(e.pointerType==='touch') return; if(tdDrag){e.preventDefault(); tdMove(e.clientY);} else tdHoldMove(e.clientX,e.clientY);});
-  addEventListener('pointerup',e=>{if(e.pointerType==='touch') return; tdCancelHold(); tdDrop();});
-  ul.addEventListener('touchstart',e=>{if(e.touches.length===1) tdHoldStart(e.target,e.touches[0].clientX,e.touches[0].clientY);},{passive:true});
-  ul.addEventListener('touchmove',e=>{const t=e.touches[0];
-    if(tdDrag){e.preventDefault(); tdMove(t.clientY);} else tdHoldMove(t.clientX,t.clientY);},{passive:false});
-  ul.addEventListener('touchend',e=>{tdCancelHold(); if(tdDrag){e.preventDefault(); tdDrop();}});
-  ul.addEventListener('touchcancel',()=>{tdCancelHold(); if(tdDrag){tdDrag=null; renderTodo();}});
-  ul.addEventListener('contextmenu',e=>{if(e.target.closest('li[data-tid]')) e.preventDefault();});
+  ul.addEventListener('pointerdown',e=>{
+    const h=e.target.closest('.td-handle'); if(!h||(e.pointerType==='mouse'&&e.button!==0)) return;
+    e.preventDefault();
+    const li=h.closest('li[data-tid]'); tdDrag={li,id:e.pointerId}; li.classList.add('td-lift');
+    try{h.setPointerCapture(e.pointerId)}catch(err){}
+  });
+  ul.addEventListener('pointermove',e=>{if(tdDrag&&e.pointerId===tdDrag.id){e.preventDefault(); tdMove(e.clientY);}});
+  ul.addEventListener('pointerup',e=>{if(tdDrag&&e.pointerId===tdDrag.id) tdDrop();});
+  ul.addEventListener('pointercancel',e=>{if(tdDrag&&e.pointerId===tdDrag.id) tdDrop();});
+  // iOS 保險：把手上的觸控不要捲動頁面
+  ul.addEventListener('touchmove',e=>{if(tdDrag) e.preventDefault();},{passive:false});
 }
 $('todoResort').onclick=()=>{
   if(!confirm('清除手動排序，改回依截止時間排序？')) return;
