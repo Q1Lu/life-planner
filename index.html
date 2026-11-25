@@ -100,7 +100,7 @@
     <form class="row" id="moneyForm">
       <select id="mType"><option value="exp">支出</option><option value="inc">收入</option></select>
       <input type="number" id="mAmt" placeholder="金額" min="0" step="any" required style="width:110px">
-      <select id="mCat"></select>
+      <div class="combo"><input type="text" id="mCat" placeholder="分類" autocomplete="off" required><div class="combo-list hidden" id="mCatList"></div></div>
       <input type="date" id="mDate" required>
       <input type="text" id="mNote" placeholder="備註">
       <button class="btn">記一筆</button>

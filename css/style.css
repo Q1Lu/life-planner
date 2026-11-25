@@ -352,3 +352,13 @@ h2{font-size:17px;margin:0 0 12px}
 .colors{display:flex;gap:8px}
 .colors span{width:24px;height:24px;border-radius:50%;cursor:pointer;border:3px solid transparent}
 .colors span.on{border-color:var(--text)}
+
+/* 記帳分類：可輸入的下拉選單 */
+.combo{position:relative}
+.combo input{width:120px;min-width:0;flex:none}
+.combo-list{position:absolute;top:calc(100% + 4px);left:0;z-index:30;min-width:180px;max-height:280px;overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.copt{display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:14px}
+.copt.on,.copt:hover{background:var(--bg)}
+.copt .cx{margin-left:auto;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;padding:2px 4px;visibility:hidden}
+.copt:hover .cx,.copt.on .cx{visibility:visible}
+@media (hover:none){.copt .cx{visibility:visible}}
