@@ -64,7 +64,7 @@ async function driveSync(){
       try{remoteTxt=await (await gFetch(`${API}/${S.fileId}?alt=media`)).text();}
       catch(e){if(e.message.startsWith('NOT_FOUND')) S.fileId=''; else throw e;}
     }
-    if(remoteTxt&&mergeInto(JSON.parse(remoteTxt))) render();
+    if(remoteTxt){const rem=JSON.parse(remoteTxt); const a=mergeInto(rem), b=dedupeHabits(rem); if(a||b) render();}
     const out=payload();
     if(!S.fileId){       // 第一次：建立雲端檔案
       const b='lp'+Date.now(), meta=JSON.stringify({name:DRIVE_NAME,parents:['appDataFolder']});

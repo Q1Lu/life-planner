@@ -44,6 +44,46 @@ function seedDaily(){
 }
 seedDaily();
 
+// 修正重複的習慣：新裝置先建了範例、之後才同步到雲端的資料，會出現兩份同名的群組／項目。
+// 1. 雲端已有自己的群組時，本機「沒動過、沒打過勾」的範例直接拿掉（不留刪除紀錄，不影響別台）
+// 2. 同名的群組合併成一個；同一群組裡同名的項目也合併，打勾紀錄一起搬過去
+function dedupeHabits(remote){
+  let changed=false;
+  const used=new Set(db.hdone.map(r=>r.itemId)), isTpl=x=>x.id.startsWith('tpl-')&&(x.u||0)<=1;
+  if(remote?.hgroups?.length){
+    const rg=new Set(remote.hgroups.map(g=>g.id)), ri=new Set((remote.hitems||[]).map(i=>i.id));
+    const n0=db.hitems.length+db.hgroups.length;
+    db.hitems=db.hitems.filter(i=>!(isTpl(i)&&!ri.has(i.id)&&!used.has(i.id)));
+    db.hgroups=db.hgroups.filter(g=>!(isTpl(g)&&!rg.has(g.id)&&!db.hitems.some(i=>i.groupId===g.id)));
+    if(db.hitems.length+db.hgroups.length!==n0){
+      changed=true; for(const k of ['hgroups','hitems']) for(const it of db[k]) baseSnap&&(baseSnap[it.id]=itemHash(it));
+      baseSnap&&Object.keys(baseSnap).forEach(id=>{if(id.startsWith('tpl-')&&!db.hgroups.some(g=>g.id===id)&&!db.hitems.some(i=>i.id===id)) delete baseSnap[id];});
+      ls('syncSnap',JSON.stringify(baseSnap));
+    }
+  }
+  // 留哪一份：自己建的（非範例）優先，再來是最近改過的
+  const pick=a=>a.slice().sort((x,y)=>(x.id.startsWith('tpl-')-y.id.startsWith('tpl-'))||((y.u||0)-(x.u||0)))[0];
+  const groupBy=(arr,key)=>{const m=new Map(); for(const x of arr){const k=key(x); m.has(k)?m.get(k).push(x):m.set(k,[x]);} return [...m.values()].filter(a=>a.length>1);};
+  for(const dup of groupBy(db.hgroups,g=>g.kind+'|'+(g.name||'').trim())){
+    const keep=pick(dup);
+    for(const g of dup) if(g!==keep){db.hitems.forEach(i=>{if(i.groupId===g.id) i.groupId=keep.id;}); db.hgroups=db.hgroups.filter(x=>x!==g); changed=true;}
+  }
+  for(const dup of groupBy(db.hitems,i=>i.groupId+'|'+i.type+'|'+(i.name||'').trim())){
+    const keep=pick(dup);
+    for(const it of dup) if(it!==keep){
+      for(const r of db.hdone.filter(r=>r.itemId===it.id)){
+        const id=doneId(r.date,keep,r.slot), k=db.hdone.find(x=>x.id===id);
+        if(k){k.val=Math.max(k.val,r.val); db.hdone=db.hdone.filter(x=>x!==r);}
+        else Object.assign(r,{id,itemId:keep.id});
+      }
+      db.hitems=db.hitems.filter(x=>x!==it); changed=true;
+    }
+  }
+  if(changed) save();
+  return changed;
+}
+dedupeHabits();
+
 /* 完成待辦的 XP 記在 db.xp：之後刪掉已完成的待辦，分數也不會不見 */
 function todoXp(t){
   const id='xp|'+t.id, r=db.xp.find(x=>x.id===id);
