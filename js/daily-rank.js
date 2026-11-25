@@ -220,6 +220,8 @@ function renderHabWeek(){
   $('hWeekSum').textContent=`達標 ${ok} 天`;
 }
 $('hWeek').onclick=e=>{const b=e.target.closest('[data-d]'); if(b){hDay=b.dataset.d; renderDaily();}};
+// 收合的群組（每台裝置各自記）
+let hFold=new Set(jget('hFold')||[]);
 function renderDaily(){
   hIdx=new Map(db.hdone.map(r=>[r.id,r]));
   renderHabWeek();
@@ -234,10 +236,12 @@ function renderDaily(){
     const items=hEdit?all:all.filter(i=>scheduled(i,hDay));
     if(!items.length&&!hEdit) continue;
     const live=items.filter(i=>scheduled(i,hDay)), gc=live.filter(i=>isDone(hDay,i)).length;
-    h+=`<div class="hg"><div class="hg-head"><span class="grow">${esc(g.icon||'')} ${esc(g.name)}</span>`+
+    const fold=hFold.has(g.id);
+    h+=`<div class="hg${fold?' folded':''}"><div class="hg-head" data-act="fold" data-g="${g.id}" title="${fold?'展開':'收合'}"><span class="fold">${fold?'▸':'▾'}</span><span class="grow">${esc(g.icon||'')} ${esc(g.name)}</span>`+
       (hEdit?`<span class="hedit"><button data-act="gup" data-g="${g.id}" title="上移">↑</button><button data-act="gdown" data-g="${g.id}" title="下移">↓</button><button data-act="gedit" data-g="${g.id}" title="編輯群組">✏️</button><button data-act="gdel" data-g="${g.id}" title="刪除群組">🗑</button></span>`
         :`<span class="cnt">${gc} / ${live.length}</span>${g.kind==='routine'&&live.length?(gc===live.length?'<span class="hrun" style="background:var(--green)">✓ 完成</span>':`<button class="hrun" data-act="run" data-g="${g.id}">▶ ${gc?'繼續':'開始'}</button>`):''}`)+'</div>';
     let list=items;
+    if(fold){h+='</div>'; continue;}
     if(g.kind==='supp'&&!hEdit){           // 保健：早／午／晚 進度，點一下只看那個時段
       const sl=Object.keys(SLOTS).filter(s=>items.some(i=>(i.slots||[]).includes(s)));
       if(sl.length>1) h+='<div class="schips">'+sl.map(s=>{const its=items.filter(i=>(i.slots||[]).includes(s)), c=its.filter(i=>getVal(hDay,i,s)>0).length;
@@ -280,6 +284,8 @@ $('hToday').onclick=e=>{
   const b=e.target.closest('[data-act]'); if(!b) return;
   const act=b.dataset.act, it=db.hitems.find(x=>x.id===b.dataset.i), g=db.hgroups.find(x=>x.id===b.dataset.g);
   switch(act){
+    case 'fold':
+      hFold.has(g.id)?hFold.delete(g.id):hFold.add(g.id); ls('hFold',JSON.stringify([...hFold])); return renderDaily();
     case 'chk':
       if(it.type==='count') setVal(hDay,it,'',getVal(hDay,it)>=it.target?0:it.target);
       else if(it.type==='timer') return alert('計時項目請按右邊的 ▶ 開始計時，達到目標就會自動打勾。');

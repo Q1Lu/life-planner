@@ -362,3 +362,8 @@ h2{font-size:17px;margin:0 0 12px}
 .copt .cx{margin-left:auto;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;padding:2px 4px;visibility:hidden}
 .copt:hover .cx,.copt.on .cx{visibility:visible}
 @media (hover:none){.copt .cx{visibility:visible}}
+
+/* 習慣群組收合 */
+.hg-head[data-act=fold]{cursor:pointer;user-select:none;-webkit-user-select:none}
+.hg-head .fold{display:inline-block;width:16px;color:var(--muted);font-size:12px}
+.hg.folded .hg-head{margin-bottom:0}
