@@ -48,27 +48,33 @@ $('pFinish').onclick=()=>{  // 提早結束（正計時就是結束）：記錄�
 $('pUpSeg').onclick=e=>{const b=e.target.closest('[data-u]'); if(!b) return; const up=b.dataset.u==='1'; if(up===PSET.countUp) return;
   if(pStarted()&&!confirm('計時中，確定要切換嗎？目前這段不會記錄。')) return;
   PSET.countUp=up; pSaveSet(); pSetMode('focus');};
-/* 滾輪選時間：上下滑動選分鐘，停下來就設定好（還沒開始計時才會出現） */
+/* 選時間：手機上點一下時間，跳出可以上下滑動的滾輪；電腦版用 ⚙️ 設定直接輸入分鐘 */
+const isTouch=()=>matchMedia('(pointer:coarse)').matches;
+const canPick=()=>isTouch()&&!pStarted()&&!isUp();
 const WH=36;   // 每一格高度(px)，要跟 CSS 的 .wh-it 一樣
-let whMode='', whTimer=null, whQuiet=false;
-function wheelBuild(){
-  const w=$('pWheel'), m=P.mode;
-  if(whMode!==m){whMode=m; w.innerHTML='<div class="wh-pad"></div>'+Array.from({length:PMAX[m]},(_,i)=>`<div class="wh-it" data-v="${i+1}">${pad(i+1)}:00</div>`).join('')+'<div class="wh-pad"></div>';}
-  whQuiet=true; w.scrollTop=(PSET[m]-1)*WH; wheelPaint(); requestAnimationFrame(()=>whQuiet=false);
-}
+let whMode='';
 function wheelPaint(){
   const w=$('pWheel'), c=w.scrollTop/WH;
   w.querySelectorAll('.wh-it').forEach((el,i)=>{const d=Math.abs(i-c); el.style.opacity=Math.max(.15,1-d*.28); el.style.transform=`scale(${Math.max(.6,1-d*.13)})`;});
 }
-$('pWheel').addEventListener('scroll',()=>{
-  wheelPaint(); if(whQuiet) return;
-  clearTimeout(whTimer); whTimer=setTimeout(()=>{
-    const m=P.mode, v=Math.max(1,Math.min(PMAX[m],Math.round($('pWheel').scrollTop/WH)+1));
-    if(v!==PSET[m]&&!pStarted()){PSET[m]=v; pSaveSet(); P.left=pDur(m); pSave(); ['focus','short','long'].forEach(k=>$('ps_'+k).value=PSET[k]); renderMini();}
-  },120);
-},{passive:true});
+function openWheel(){
+  const w=$('pWheel'), m=P.mode;
+  if(whMode!==m){whMode=m; w.innerHTML='<div class="wh-pad"></div>'+Array.from({length:PMAX[m]},(_,i)=>`<div class="wh-it" data-v="${i+1}">${pad(i+1)}:00</div>`).join('')+'<div class="wh-pad"></div>';}
+  $('pwTitle').textContent='選擇'+PLABEL[m]+'時間';
+  $('pwModal').classList.remove('hidden');
+  w.scrollTop=(PSET[m]-1)*WH; wheelPaint();
+}
+const closeWheel=()=>$('pwModal').classList.add('hidden');
+$('pWheel').addEventListener('scroll',wheelPaint,{passive:true});
 $('pWheel').onclick=e=>{const it=e.target.closest('.wh-it'); if(it) $('pWheel').scrollTo({top:(+it.dataset.v-1)*WH,behavior:'smooth'});};
-$('pModeSeg').onclick=e=>{const b=e.target.closest('[data-m]'); if(!b||b.dataset.m===P.mode) return;
+$('pTime').onclick=()=>{if(canPick()) openWheel();};
+$('pwCancel').onclick=closeWheel;
+$('pwModal').onclick=e=>{if(e.target.id==='pwModal') closeWheel();};
+$('pwOk').onclick=()=>{
+  const m=P.mode, v=Math.max(1,Math.min(PMAX[m],Math.round($('pWheel').scrollTop/WH)+1));
+  closeWheel(); if(pStarted()) return;
+  PSET[m]=v; pSaveSet(); P.left=pDur(m); pSave(); renderPomo(); renderMini();
+};$('pModeSeg').onclick=e=>{const b=e.target.closest('[data-m]'); if(!b||b.dataset.m===P.mode) return;
   if(P.running&&!confirm('計時中，確定要切換嗎？目前這段不會記錄。')) return; pSetMode(b.dataset.m);};
 $('pTask').onchange=e=>{P.todoId=e.target.value; pSave(); renderMini();};
 $('pAddTask').onclick=()=>{const v=$('pNewTask').value.trim(); if(!v) return;
@@ -94,9 +100,8 @@ function renderPomo(){
   $('pFinish').classList.toggle('hidden',P.mode!=='focus'||(isUp()&&!pStarted()));
   $('pUpSeg').classList.toggle('hidden',P.mode!=='focus');
   document.querySelectorAll('#pUpSeg .pbtn').forEach(b=>b.classList.toggle('on',(b.dataset.u==='1')===!!PSET.countUp));
-  const wheel=!pStarted()&&!isUp();          // 還沒開始的倒數：顯示滾輪讓你選分鐘
-  $('pWheelBox').classList.toggle('hidden',!wheel); $('pTime').classList.toggle('hidden',wheel);
-  if(wheel) wheelBuild();
+  $('pTime').classList.toggle('pickable',canPick());
+
   $('pCycle').textContent=`第 ${P.cycles%PSET.every+1} 輪 · 每 ${PSET.every} 輪後長休息一次`;
   pTickUI();
   const t=habitDay(), today=db.pomos.filter(p=>p.date===t);
@@ -114,8 +119,7 @@ function renderPomo(){
 function pTickUI(){
   const C=2*Math.PI*90, ring=$('pRing'), up=isUp(), sec=pShown();
   $('pTime').textContent=fmtClock(sec);
-  $('pModeLabel').classList.toggle('hidden',!pStarted()&&!up);   // 滾輪出現時不顯示，圓圈裡放不下
-  $('pModeLabel').textContent=(up?'正計時':PLABEL[P.mode])+(P.running?'中':(pStarted()?'（暫停）':''));
+  $('pModeLabel').textContent=canPick()?PLABEL[P.mode]+' · 點時間可以調整':(up?'正計時':PLABEL[P.mode])+(P.running?'中':(pStarted()?'（暫停）':''));
   // 倒數：剩下多少；正計時：每 60 分鐘繞一圈
   const frac=up?(sec%3600)/3600:sec/pDur(P.mode);
   ring.style.strokeDasharray=C; ring.style.strokeDashoffset=C*(1-frac);
