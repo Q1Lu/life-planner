@@ -24,25 +24,7 @@ const isDone=(ds,it)=>{const [a,b]=itemProgress(ds,it); return b>0&&a>=b;};
 function dayStat(ds){let d=0,t=0,n=0,c=0; for(const it of db.hitems) if(scheduled(it,ds)){const [a,b]=itemProgress(ds,it); d+=a; t+=b; n++; if(b&&a>=b) c++;} return {rate:t?d/t:0,done:c,total:n};}
 const daysLabel=d=>!d||d.length===7?'':d.join()==='1,2,3,4,5'?'平日':d.join()==='0,6'?'週末':d.map(x=>WD[x]).join('');
 
-// 第一次使用：建立幾個通用的範例群組（之後都可以改）。
-// 已經連過 Google 的裝置，先等雲端同步完再決定要不要建，避免跟別台裝置的資料重複。
-function seedDaily(){
-  if(db.hgroups.length||ls('hSeeded')) return;
-  if(G.want&&!ls('syncLast')) return;            // 等第一次同步（driveSync 完成後會再呼叫）
-  ls('hSeeded','1');
-  const t='2000-01-01', g=(id,icon,name,kind,order)=>db.hgroups.push({id,icon,name,kind,order,u:1});
-  let o=0; const it=(groupId,name,x={})=>db.hitems.push({id:'tpl-i'+(++o),groupId,name,note:'',type:'check',order:o,created:t,u:1,...x});
-  g('tpl-g1','🌅','morning routine','routine',1);
-  ['起床後喝一杯水','伸展 5 分鐘','列出今天最重要的一件事','整理床鋪'].forEach(n=>it('tpl-g1',n));
-  g('tpl-g2','🛏️','作息','normal',2); it('tpl-g2','早睡早起'); it('tpl-g2','睡滿 7 小時');
-  g('tpl-g3','🥗','飲食','normal',3);
-  it('tpl-g3','喝水',{type:'count',target:2000,unit:'ml',step:250});
-  it('tpl-g3','健康三餐',{type:'count',target:3,unit:'餐',step:1,note:'早·午·晚'});
-  g('tpl-g4','💊','保健','supp',4); it('tpl-g4','維他命',{type:'supp',slots:['m']});
-  g('tpl-g5','🌙','睡前檢查','normal',5); it('tpl-g5','記帳'); it('tpl-g5','準備明天要用的東西');
-  save();
-}
-seedDaily();
+// 新使用者一開始是空的：不建立範例群組，讓每個人自己新增（資料存在自己的瀏覽器和 Google 雲端硬碟）
 
 // 修正重複的習慣：新裝置先建了範例、之後才同步到雲端的資料，會出現兩份同名的群組／項目。
 // 1. 雲端已有自己的群組時，本機「沒動過、沒打過勾」的範例直接拿掉（不留刪除紀錄，不影響別台）
@@ -223,6 +205,7 @@ $('hWeek').onclick=e=>{const b=e.target.closest('[data-d]'); if(b){hDay=b.datase
 // 收合的群組（每台裝置各自記）
 let hFold=new Set(jget('hFold')||[]);
 function renderDaily(){
+  if(SORT.on) return;   // 拖曳中先不重畫
   hIdx=new Map(db.hdone.map(r=>[r.id,r]));
   renderHabWeek();
   const d=parse(hDay), t=habitDay();
@@ -237,7 +220,7 @@ function renderDaily(){
     if(!items.length&&!hEdit) continue;
     const live=items.filter(i=>scheduled(i,hDay)), gc=live.filter(i=>isDone(hDay,i)).length;
     const fold=hFold.has(g.id);
-    h+=`<div class="hg${fold?' folded':''}"><div class="hg-head" data-act="fold" data-g="${g.id}" title="${fold?'展開':'收合'}"><span class="fold">${fold?'▸':'▾'}</span><span class="grow">${esc(g.icon||'')} ${esc(g.name)}</span>`+
+    h+=`<div class="hg${fold?' folded':''}" data-sid="${g.id}"><div class="hg-head" data-act="fold" data-g="${g.id}" title="${fold?'展開':'收合'}">${dragHandle('hg')}<span class="fold">${fold?'▸':'▾'}</span><span class="grow">${esc(g.icon||'')} ${esc(g.name)}</span>`+
       (hEdit?`<span class="hedit"><button data-act="gup" data-g="${g.id}" title="上移">↑</button><button data-act="gdown" data-g="${g.id}" title="下移">↓</button><button data-act="gedit" data-g="${g.id}" title="編輯群組">✏️</button><button data-act="gdel" data-g="${g.id}" title="刪除群組">🗑</button></span>`
         :`<span class="cnt">${gc} / ${live.length}</span>${g.kind==='routine'&&live.length?(gc===live.length?'<span class="hrun" style="background:var(--green)">✓ 完成</span>':`<button class="hrun" data-act="run" data-g="${g.id}">▶ ${gc?'繼續':'開始'}</button>`):''}`)+'</div>';
     let list=items;
@@ -267,7 +250,7 @@ function renderDaily(){
       const edit=hEdit?`<span class="hedit"><button data-act="iup" data-i="${it.id}">↑</button><button data-act="idown" data-i="${it.id}">↓</button><button data-act="iedit" data-i="${it.id}">✏️</button></span>`:'';
       const stat=hEdit?'':(hStatMode==='total'?`<button class="hstat" data-act="stat" title="點一下切換成「當前連續」"><b>${itemTotal(it)}</b><small>總天數</small></button>`
         :`<button class="hstat" data-act="stat" title="點一下切換成「總天數」"><b>${itemStreak(it)}</b><small>當前連續</small></button>`);
-      h+=`<div class="hi${done?' done':''}${on?'':' off'}">${lead}${hEdit?'':left}<div class="hi-main"><div class="hi-name">${esc(it.name)} ${tags}</div>${it.note?`<div class="hi-note">${esc(it.note)}</div>`:''}</div><div class="hi-side">${hEdit?'':side}</div>${stat}${edit}</div>`;
+      h+=`<div class="hi${done?' done':''}${on?'':' off'}" data-sid="${it.id}">${dragHandle('hi')}${lead}${hEdit?'':left}<div class="hi-main"><div class="hi-name">${esc(it.name)} ${tags}</div>${it.note?`<div class="hi-note">${esc(it.note)}</div>`:''}</div><div class="hi-side">${hEdit?'':side}</div>${stat}${edit}</div>`;
     });
     if(hEdit) h+=`<button class="hadd" data-act="iadd" data-g="${g.id}">＋ 在「${esc(g.name)}」新增項目</button>`;
     h+='</div>';
@@ -311,6 +294,14 @@ $('hToday').onclick=e=>{
   }
   renderHabit();
 };
+/* 按住「≡」把手上下拖曳：群組換順序、群組裡的項目換順序 */
+makeSortable($('hToday'),'hg','.hg',ids=>{
+  reorderSubset([...db.hgroups].sort(byOrder),ids).forEach((g,i)=>g.order=i*10); save(); renderDaily();
+});
+makeSortable($('hToday'),'hi','.hi',(ids,el)=>{
+  const gid=el.closest('.hg')?.dataset.sid;
+  reorderSubset(db.hitems.filter(x=>x.groupId===gid).sort(byOrder),ids).forEach((it,i)=>it.order=i*10); save(); renderDaily();
+});
 $('hEditBtn').onclick=()=>{hEdit=!hEdit; renderDaily();};
 $('hdPrev').onclick=()=>{hDay=addDays(hDay,-1); renderDaily();};
 $('hdNext').onclick=()=>{hDay=addDays(hDay,1); renderDaily();};

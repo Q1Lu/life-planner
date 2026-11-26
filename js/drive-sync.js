@@ -74,7 +74,6 @@ async function driveSync(){
       await gFetch(`${UP}/${S.fileId}?uploadType=media`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:out});
     }
     ls('driveFileId',S.fileId); S.last=Date.now(); ls('syncLast',String(S.last));
-    if(!db.hgroups.length&&!ls('hSeeded')){seedDaily(); render();}   // 雲端也沒有資料，才建立範例
   }catch(err){S.err=err.message.replace(/^NOT_FOUND /,'');}
   S.busy=false; syncUI();
   if(S.again){S.again=false; driveSync();}

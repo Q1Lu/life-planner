@@ -1,10 +1,17 @@
 /* ---------- 番茄鐘 ---------- */
-const PSET=Object.assign({focus:25,short:5,long:15,every:4,auto:false},jget('pomoSet')||{});
-const P=Object.assign({mode:'focus',running:false,endAt:0,left:PSET.focus*60,todoId:'',cycles:0},jget('pomoState')||{});
+// countUp：專注改成「正計時」（00:00 → ∞，自己按結束）
+const PSET=Object.assign({focus:25,short:5,long:15,every:4,auto:false,countUp:false},jget('pomoSet')||{});
+const P=Object.assign({mode:'focus',running:false,endAt:0,left:PSET.focus*60,todoId:'',cycles:0,acc:0,startAt:0},jget('pomoState')||{});
 const PLABEL={focus:'專注',short:'短休息',long:'長休息'};
+const PMAX={focus:180,short:60,long:90};     // 滾輪可以選到幾分鐘
 const pDur=m=>PSET[m]*60;
 const pSave=()=>ls('pomoState',JSON.stringify(P));
+const pSaveSet=()=>ls('pomoSet',JSON.stringify(PSET));
+const isUp=()=>P.mode==='focus'&&PSET.countUp;
 const pLeft=()=>P.running?Math.max(0,(P.endAt-Date.now())/1000):P.left;
+const pElapsed=()=>isUp()?(P.acc||0)+(P.running?(Date.now()-P.startAt)/1000:0):pDur(P.mode)-pLeft();
+const pStarted=()=>P.running||(isUp()?(P.acc||0)>0:P.left<pDur(P.mode));
+const pShown=()=>isUp()?pElapsed():pLeft();     // 畫面上顯示的秒數
 const pNext=()=>P.mode==='focus'?(P.cycles%PSET.every===0?'long':'short'):'focus';
 function pLog(sec){         // 把這段專注時間記到目前的工作上
   const min=Math.round(sec/60); if(min<1) return;
@@ -15,10 +22,11 @@ function pLog(sec){         // 把這段專注時間記到目前的工作上
 function pStart(){
   if(P.running) return pPause();
   try{if('Notification' in window&&Notification.permission==='default') Notification.requestPermission();}catch(e){}
-  P.endAt=Date.now()+P.left*1000; P.running=true; pSave(); renderPomo(); renderMini();
+  if(isUp()) P.startAt=Date.now(); else P.endAt=Date.now()+P.left*1000;
+  P.running=true; pSave(); renderPomo(); renderMini();
 }
-function pPause(){P.left=pLeft(); P.running=false; pSave(); renderPomo(); renderMini();}
-function pSetMode(m){P.mode=m; P.running=false; P.left=pDur(m); pSave(); renderPomo(); renderMini();}
+function pPause(){if(isUp()) P.acc=pElapsed(); else P.left=pLeft(); P.running=false; pSave(); renderPomo(); renderMini();}
+function pSetMode(m){P.mode=m; P.running=false; P.left=pDur(m); P.acc=0; pSave(); renderPomo(); renderMini();}
 function pFinish(){          // 時間到
   const was=P.mode;
   if(was==='focus'){pLog(pDur('focus')); P.cycles++;}
@@ -30,12 +38,36 @@ function pFinish(){          // 時間到
 $('pStart').onclick=pStart;
 $('pReset').onclick=()=>pSetMode(P.mode);
 $('pSkip').onclick=()=>{
-  if(P.mode==='focus'){const el=pDur('focus')-pLeft(); if(el>=60) pLog(el); P.cycles++;}
+  if(P.mode==='focus'){const el=pElapsed(); if(el>=60) pLog(el); P.cycles++;}
   pSetMode(pNext());};
-$('pFinish').onclick=()=>{  // 提早結束：記錄已經專注的時間
-  const el=pDur('focus')-pLeft();
+$('pFinish').onclick=()=>{  // 提早結束（正計時就是結束）：記錄已經專注的時間
+  const el=pElapsed();
   if(el<60){alert('專注還不到 1 分鐘，這次不記錄。'); return;}
-  pLog(el); pSetMode('focus');};
+  pLog(el); if(isUp()) P.cycles++; pSetMode('focus');};
+// 計時方式：倒數（選幾分鐘）／正計時（從 00:00 開始，自己按結束）
+$('pUpSeg').onclick=e=>{const b=e.target.closest('[data-u]'); if(!b) return; const up=b.dataset.u==='1'; if(up===PSET.countUp) return;
+  if(pStarted()&&!confirm('計時中，確定要切換嗎？目前這段不會記錄。')) return;
+  PSET.countUp=up; pSaveSet(); pSetMode('focus');};
+/* 滾輪選時間：上下滑動選分鐘，停下來就設定好（還沒開始計時才會出現） */
+const WH=36;   // 每一格高度(px)，要跟 CSS 的 .wh-it 一樣
+let whMode='', whTimer=null, whQuiet=false;
+function wheelBuild(){
+  const w=$('pWheel'), m=P.mode;
+  if(whMode!==m){whMode=m; w.innerHTML='<div class="wh-pad"></div>'+Array.from({length:PMAX[m]},(_,i)=>`<div class="wh-it" data-v="${i+1}">${pad(i+1)}:00</div>`).join('')+'<div class="wh-pad"></div>';}
+  whQuiet=true; w.scrollTop=(PSET[m]-1)*WH; wheelPaint(); requestAnimationFrame(()=>whQuiet=false);
+}
+function wheelPaint(){
+  const w=$('pWheel'), c=w.scrollTop/WH;
+  w.querySelectorAll('.wh-it').forEach((el,i)=>{const d=Math.abs(i-c); el.style.opacity=Math.max(.15,1-d*.28); el.style.transform=`scale(${Math.max(.6,1-d*.13)})`;});
+}
+$('pWheel').addEventListener('scroll',()=>{
+  wheelPaint(); if(whQuiet) return;
+  clearTimeout(whTimer); whTimer=setTimeout(()=>{
+    const m=P.mode, v=Math.max(1,Math.min(PMAX[m],Math.round($('pWheel').scrollTop/WH)+1));
+    if(v!==PSET[m]&&!pStarted()){PSET[m]=v; pSaveSet(); P.left=pDur(m); pSave(); ['focus','short','long'].forEach(k=>$('ps_'+k).value=PSET[k]); renderMini();}
+  },120);
+},{passive:true});
+$('pWheel').onclick=e=>{const it=e.target.closest('.wh-it'); if(it) $('pWheel').scrollTo({top:(+it.dataset.v-1)*WH,behavior:'smooth'});};
 $('pModeSeg').onclick=e=>{const b=e.target.closest('[data-m]'); if(!b||b.dataset.m===P.mode) return;
   if(P.running&&!confirm('計時中，確定要切換嗎？目前這段不會記錄。')) return; pSetMode(b.dataset.m);};
 $('pTask').onchange=e=>{P.todoId=e.target.value; pSave(); renderMini();};
@@ -58,8 +90,13 @@ function renderPomo(){
   const open=db.todos.filter(x=>!x.done||x.id===P.todoId);
   $('pTask').innerHTML='<option value="">（不指定工作）</option>'+open.map(x=>`<option value="${x.id}">${esc(x.text)}</option>`).join('');
   $('pTask').value=open.some(x=>x.id===P.todoId)?P.todoId:'';
-  $('pStart').textContent=P.running?'⏸ 暫停':(P.left<pDur(P.mode)?'▶ 繼續':'▶ 開始');
-  $('pFinish').classList.toggle('hidden',P.mode!=='focus');
+  $('pStart').textContent=P.running?'⏸ 暫停':(pStarted()?'▶ 繼續':'▶ 開始');
+  $('pFinish').classList.toggle('hidden',P.mode!=='focus'||(isUp()&&!pStarted()));
+  $('pUpSeg').classList.toggle('hidden',P.mode!=='focus');
+  document.querySelectorAll('#pUpSeg .pbtn').forEach(b=>b.classList.toggle('on',(b.dataset.u==='1')===!!PSET.countUp));
+  const wheel=!pStarted()&&!isUp();          // 還沒開始的倒數：顯示滾輪讓你選分鐘
+  $('pWheelBox').classList.toggle('hidden',!wheel); $('pTime').classList.toggle('hidden',wheel);
+  if(wheel) wheelBuild();
   $('pCycle').textContent=`第 ${P.cycles%PSET.every+1} 輪 · 每 ${PSET.every} 輪後長休息一次`;
   pTickUI();
   const t=habitDay(), today=db.pomos.filter(p=>p.date===t);
@@ -75,10 +112,13 @@ function renderPomo(){
   ['focus','short','long','every'].forEach(k=>$('ps_'+k).value=PSET[k]); $('ps_auto').checked=PSET.auto;
 }
 function pTickUI(){
-  const left=pLeft(), tot=pDur(P.mode), C=2*Math.PI*90, ring=$('pRing');
-  $('pTime').textContent=fmtClock(left);
-  $('pModeLabel').textContent=PLABEL[P.mode]+(P.running?'中':(left<tot?'（暫停）':''));
-  ring.style.strokeDasharray=C; ring.style.strokeDashoffset=C*(1-left/tot);
+  const C=2*Math.PI*90, ring=$('pRing'), up=isUp(), sec=pShown();
+  $('pTime').textContent=fmtClock(sec);
+  $('pModeLabel').classList.toggle('hidden',!pStarted()&&!up);   // 滾輪出現時不顯示，圓圈裡放不下
+  $('pModeLabel').textContent=(up?'正計時':PLABEL[P.mode])+(P.running?'中':(pStarted()?'（暫停）':''));
+  // 倒數：剩下多少；正計時：每 60 分鐘繞一圈
+  const frac=up?(sec%3600)/3600:sec/pDur(P.mode);
+  ring.style.strokeDasharray=C; ring.style.strokeDashoffset=C*(1-frac);
   ring.style.stroke=P.mode==='focus'?'#e5484d':'#16a34a';
 }
 function beep(){
@@ -92,20 +132,20 @@ function notify(msg){try{if('Notification' in window&&Notification.permission===
 /* 頂部的小計時器：在其他分頁也看得到番茄鐘、習慣計時 */
 function renderMini(){
   let h='';
-  if(tab!=='pomo'&&(P.running||P.left<pDur(P.mode))){
+  if(tab!=='pomo'&&pStarted()){
     const t=db.todos.find(x=>x.id===P.todoId);
-    h+=`<button class="mini" data-go="pomo" style="--c:${P.mode==='focus'?'#e5484d':'#16a34a'}">${P.mode==='focus'?'🍅':'☕'} ${fmtClock(pLeft())}${P.running?'':' ⏸'}${t&&P.mode==='focus'?' · '+esc(t.text.slice(0,10)):''}</button>`;
+    h+=`<button class="mini" data-go="pomo" style="--c:${P.mode==='focus'?'#e5484d':'#16a34a'}">${P.mode==='focus'?'🍅':'☕'} ${fmtClock(pShown())}${P.running?'':' ⏸'}${t&&P.mode==='focus'?' · '+esc(t.text.slice(0,10)):''}</button>`;
   }
   const hb=db.habitTimer&&db.habits.find(x=>x.id===db.habitTimer.habitId);
   if(hb&&tab!=='habit') h+=`<button class="mini" data-go="habit" style="--c:${esc(hb.color)}">${esc(hb.icon)} ${fmtClock((Date.now()-db.habitTimer.start)/1000)}</button>`;
   $('miniTimers').innerHTML=h;
-  document.title=(P.running?`${P.mode==='focus'?'🍅':'☕'} ${fmtClock(pLeft())} · `:'')+'我的生活手帳';
+  document.title=(P.running?`${P.mode==='focus'?'🍅':'☕'} ${fmtClock(pShown())} · `:'')+'我的生活手帳';
 }
 $('miniTimers').onclick=e=>{const b=e.target.closest('[data-go]'); if(b) goTab(b.dataset.go);};
 setInterval(()=>{
-  if(P.running&&Date.now()>=P.endAt) pFinish();
+  if(P.running&&!isUp()&&Date.now()>=P.endAt) pFinish();
   if(tab==='pomo') pTickUI();
   document.querySelectorAll('.htimer').forEach(el=>el.textContent=fmtClock((Date.now()-+el.dataset.start)/1000));
   renderMini();
 },1000);
-if(P.running&&Date.now()>=P.endAt) pFinish();   // 關掉頁面期間時間到了
+if(P.running&&!isUp()&&Date.now()>=P.endAt) pFinish();   // 關掉頁面期間時間到了

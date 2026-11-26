@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>我的生活手帳</title>
 <script>/* 先套用深淺色，避免畫面閃一下 */try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
-<link rel="stylesheet" href="css/style.css?v=202611251440">
+<link rel="stylesheet" href="css/style.css?v=202611270158">
 </head>
 <body>
 <header>
@@ -236,8 +236,9 @@
   <div class="pomo-wrap">
     <div class="card" style="text-align:center">
       <div class="seg" id="pModeSeg" style="display:inline-flex"><button class="pbtn" data-m="focus">專注</button><button class="pbtn" data-m="short">短休息</button><button class="pbtn" data-m="long">長休息</button></div>
+      <div><div class="seg" id="pUpSeg" style="display:inline-flex;margin-top:8px"><button class="pbtn" data-u="0" title="選好分鐘數，倒數到 00:00">⏳ 倒數</button><button class="pbtn" data-u="1" title="從 00:00 開始計時，直到你按結束">∞ 正計時</button></div></div>
       <div class="ring"><svg viewBox="0 0 200 200"><circle cx="100" cy="100" r="90" class="ring-bg"/><circle cx="100" cy="100" r="90" id="pRing" class="ring-fg"/></svg>
-        <div class="ring-txt"><div class="ptime" id="pTime"></div><div class="muted" id="pModeLabel"></div></div></div>
+        <div class="ring-txt"><div class="ptime" id="pTime"></div><div class="wheel-box hidden" id="pWheelBox"><div class="wheel" id="pWheel"></div></div><div class="muted" id="pModeLabel"></div></div></div>
       <div style="text-align:left">
         <label class="muted" style="font-size:13px">正在處理哪項工作</label>
         <select id="pTask" style="width:100%;margin:4px 0 8px"></select>
@@ -422,17 +423,17 @@
 </div>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="js/core.js?v=202611251440"></script>
-<script src="js/calendar.js?v=202611251440"></script>
-<script src="js/todo.js?v=202611251440"></script>
-<script src="js/money.js?v=202611251440"></script>
-<script src="js/backup.js?v=202611251440"></script>
-<script src="js/google-calendar.js?v=202611251440"></script>
-<script src="js/drive-sync.js?v=202611251440"></script>
-<script src="js/habits.js?v=202611251440"></script>
-<script src="js/daily-rank.js?v=202611251440"></script>
-<script src="js/health.js?v=202611251440"></script>
-<script src="js/pomodoro.js?v=202611251440"></script>
-<script src="js/main.js?v=202611251440"></script>
+<script src="js/core.js?v=202611270158"></script>
+<script src="js/calendar.js?v=202611270158"></script>
+<script src="js/todo.js?v=202611270158"></script>
+<script src="js/money.js?v=202611270158"></script>
+<script src="js/backup.js?v=202611270158"></script>
+<script src="js/google-calendar.js?v=202611270158"></script>
+<script src="js/drive-sync.js?v=202611270158"></script>
+<script src="js/habits.js?v=202611270158"></script>
+<script src="js/daily-rank.js?v=202611270158"></script>
+<script src="js/health.js?v=202611270158"></script>
+<script src="js/pomodoro.js?v=202611270158"></script>
+<script src="js/main.js?v=202611270158"></script>
 </body>
 </html>
