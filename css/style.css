@@ -346,6 +346,9 @@ h2{font-size:17px;margin:0 0 12px}
 /* 番茄鐘滾輪選時間：一格 36px、看得到 5 格，中間那格就是選到的 */
 .wheel-box{position:relative;width:100%;height:180px}
 .ptime.pickable{cursor:pointer;text-decoration:underline dotted var(--muted);text-underline-offset:8px;text-decoration-thickness:2px}
+@media (pointer:fine){.ptime.pickable{cursor:text}.ptime.pickable:hover{color:var(--primary)}}
+/* 電腦版直接打字改時間的輸入框，長得跟時間一樣 */
+.ptime-in{width:150px;padding:0 4px;text-align:center;background:transparent;border:0;border-bottom:2px solid var(--primary);border-radius:0;color:var(--text);font-family:inherit;outline:none}
 .wheel-box::after{content:'';position:absolute;left:8%;right:8%;top:72px;height:36px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);pointer-events:none}
 .wheel{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;scrollbar-width:none;overscroll-behavior:contain;-webkit-mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent);mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent)}
 .wheel::-webkit-scrollbar{display:none}

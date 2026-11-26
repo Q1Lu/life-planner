@@ -50,7 +50,7 @@ $('pUpSeg').onclick=e=>{const b=e.target.closest('[data-u]'); if(!b) return; con
   PSET.countUp=up; pSaveSet(); pSetMode('focus');};
 /* 選時間：手機上點一下時間，跳出可以上下滑動的滾輪；電腦版用 ⚙️ 設定直接輸入分鐘 */
 const isTouch=()=>matchMedia('(pointer:coarse)').matches;
-const canPick=()=>isTouch()&&!pStarted()&&!isUp();
+const canPick=()=>!pStarted()&&!isUp();   // 還沒開始的倒數才可以改時間
 const WH=36;   // 每一格高度(px)，要跟 CSS 的 .wh-it 一樣
 let whMode='';
 function wheelPaint(){
@@ -67,7 +67,21 @@ function openWheel(){
 const closeWheel=()=>$('pwModal').classList.add('hidden');
 $('pWheel').addEventListener('scroll',wheelPaint,{passive:true});
 $('pWheel').onclick=e=>{const it=e.target.closest('.wh-it'); if(it) $('pWheel').scrollTo({top:(+it.dataset.v-1)*WH,behavior:'smooth'});};
-$('pTime').onclick=()=>{if(canPick()) openWheel();};
+$('pTime').onclick=()=>{if(!canPick()) return; isTouch()?openWheel():typeEdit();};
+/* 電腦版：點時間直接打字改（輸入分鐘，例如 45；或 45:00）。Enter／點旁邊 = 套用，Esc = 取消 */
+function typeEdit(){
+  const inp=$('pTimeIn'); inp.value=String(PSET[P.mode]);
+  $('pTime').classList.add('hidden'); inp.classList.remove('hidden'); inp.focus(); inp.select();
+}
+function typeDone(apply){
+  const inp=$('pTimeIn'); if(inp.classList.contains('hidden')) return;
+  inp.classList.add('hidden'); $('pTime').classList.remove('hidden');
+  const m=P.mode, v=parseInt(inp.value.trim().split(':')[0],10);
+  if(apply&&v>=1&&!pStarted()){PSET[m]=Math.min(PMAX[m],v); pSaveSet(); P.left=pDur(m); pSave(); renderMini();}
+  renderPomo();
+}
+$('pTimeIn').onkeydown=e=>{if(e.isComposing) return; if(e.key==='Enter'){e.preventDefault(); typeDone(true);} else if(e.key==='Escape') typeDone(false);};
+$('pTimeIn').onblur=()=>typeDone(true);
 $('pwCancel').onclick=closeWheel;
 $('pwModal').onclick=e=>{if(e.target.id==='pwModal') closeWheel();};
 $('pwOk').onclick=()=>{
@@ -119,7 +133,7 @@ function renderPomo(){
 function pTickUI(){
   const C=2*Math.PI*90, ring=$('pRing'), up=isUp(), sec=pShown();
   $('pTime').textContent=fmtClock(sec);
-  $('pModeLabel').textContent=canPick()?PLABEL[P.mode]+' · 點時間可以調整':(up?'正計時':PLABEL[P.mode])+(P.running?'中':(pStarted()?'（暫停）':''));
+  $('pModeLabel').textContent=canPick()?PLABEL[P.mode]+(isTouch()?' · 點時間可以調整':' · 點時間可以直接輸入'):(up?'正計時':PLABEL[P.mode])+(P.running?'中':(pStarted()?'（暫停）':''));
   // 倒數：剩下多少；正計時：每 60 分鐘繞一圈
   const frac=up?(sec%3600)/3600:sec/pDur(P.mode);
   ring.style.strokeDasharray=C; ring.style.strokeDashoffset=C*(1-frac);
