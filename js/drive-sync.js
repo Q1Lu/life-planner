@@ -1,6 +1,6 @@
 /* ---------- Google Drive 雲端同步：待辦、記帳、習慣、番茄鐘、本機行程 ----------
    每筆資料記下最後修改時間 u；刪除的記在 db.deleted。兩台裝置的資料「逐筆」比較，較新的留下。 */
-const SYNC_KEYS=['events','todos','money','habits','habitLogs','pomos','hgroups','hitems','hdone','xp','health','mcats'];
+const SYNC_KEYS=['events','todos','money','habits','habitLogs','pomos','hgroups','hitems','hdone','xp','health','mcats','body','meals'];
 const DRIVE_NAME='life-planner-data.json';
 const S={busy:false,again:false,timer:null,last:+(ls('syncLast')||0),err:'',fileId:ls('driveFileId')||''};
 let baseSnap=jget('syncSnap');             // 上次存檔時每筆資料的內容，用來找出哪些改過、哪些被刪掉

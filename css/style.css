@@ -137,6 +137,29 @@ h2{font-size:17px;margin:0 0 12px}
 .tag.late{background:var(--late-bg);color:var(--red)}
 .tag.tomato{background:var(--tomato-bg);color:var(--tomato)}
 .todo-edit{cursor:pointer}
+/* 飲食 */
+.dp-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dp-form label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.dp-form label.full{grid-column:1/-1}
+.dp-form input,.dp-form select{color:var(--text)}
+.dt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.dt-grid .stat{padding:10px}.dt-grid .v{font-size:20px}.dt-grid small{font-size:12px;font-weight:400;color:var(--muted)}
+.dprev{margin-top:12px;padding:10px;border:1px dashed var(--line);border-radius:10px}
+.dp-it,.dm-it{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+.dp-it:last-child,.dm-it:last-child{border-bottom:0}
+.dm-slot{margin-bottom:12px}
+.dm-head{display:flex;justify-content:space-between;font-weight:600;padding-bottom:4px;border-bottom:1px solid var(--line)}
+/* 健身 */
+.gchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.gchip{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:999px;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer}
+.gchip.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.gtab{width:100%;border-collapse:collapse;font-size:14px}
+.gtab th{text-align:left;font-weight:600;color:var(--muted);font-size:12px;padding:4px 6px;border-bottom:1px solid var(--line)}
+.gtab td{padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.gtab td:not(:first-child){white-space:nowrap}
+.gtab tr.gpri td:first-child{box-shadow:inset 3px 0 0 var(--amber)}
+@media (max-width:600px){.gtab th:nth-child(4),.gtab td:nth-child(4){display:none}.dp-form{grid-template-columns:1fr}}
+
 /* 拖曳排序：按住前面的四條線把手（待辦、習慣共用） */
 .drag-h{flex:none;display:flex;flex-direction:column;justify-content:center;gap:3px;width:28px;align-self:stretch;min-height:32px;margin:-4px 0 -4px -4px;padding:0 6px;box-sizing:border-box;cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .drag-h i{display:block;height:2px;border-radius:1px;background:var(--muted)}

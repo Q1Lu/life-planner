@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>我的生活手帳</title>
 <script>/* 先套用深淺色，避免畫面閃一下 */try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
-<link rel="stylesheet" href="css/style.css?v=202611270216">
+<link rel="stylesheet" href="css/style.css?v=202611270247">
 </head>
 <body>
 <header>
@@ -17,6 +17,8 @@
     <button data-tab="habit">🏃 習慣</button>
     <button data-tab="pomo">🍅 番茄鐘</button>
     <button data-tab="health">❤️ 健康</button>
+    <button data-tab="diet">🥗 飲食</button>
+    <button data-tab="gym">🏋️ 健身</button>
     <button data-tab="rank" class="hidden">🏅 段位</button>
   </nav>
   <button class="mini" id="rankPill" title="段位與經驗值（點一下看詳情）"></button>
@@ -231,6 +233,91 @@
  </div>
 </section>
 
+<!-- 飲食 -->
+<section id="tab-diet" class="hidden">
+ <div class="hl-layout">
+  <div class="hl-left">
+    <div class="card">
+      <h2>🧍 身體資料與目標</h2>
+      <form id="dpForm" class="dp-form" onsubmit="return false">
+        <label>性別<select id="dpSex"><option value="m">男</option><option value="f">女</option></select></label>
+        <label>年齡<input type="number" id="dpAge" min="10" max="100" placeholder="歲"></label>
+        <label>身高<input type="number" id="dpH" min="100" max="230" step="0.1" placeholder="cm"></label>
+        <label>體重 <span class="muted small" id="dpWHint"></span><input type="number" id="dpW" min="20" max="300" step="0.1" placeholder="kg"></label>
+        <label class="full">活動量<select id="dpAct"></select></label>
+        <label>目標體重<input type="number" id="dpGoal" min="20" max="300" step="0.1" placeholder="kg（選填）"></label>
+        <label>蛋白質 × 體重：<b id="dpProtV"></b> g/kg<input type="range" id="dpProt" min="1.6" max="2" step="0.1"></label>
+      </form>
+      <div id="dpTargets" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <details><summary class="muted" style="cursor:pointer">🤖 AI 分析設定（選用）</summary>
+        <div class="small" style="margin-top:8px;line-height:1.6">
+          資料庫找不到的食物，可以用 AI 分析任何中文描述（例如「巷口的鹽酥雞加九層塔、大杯半糖青茶」）。
+          需要你自己的 <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Claude API 金鑰</a>，費用算在你的 Anthropic 帳號，一次分析大約台幣幾毛錢。<br>
+          金鑰<b>只存在這台裝置的瀏覽器</b>，不會上傳到 GitHub 或 Google 雲端；公用電腦不要存。
+        </div>
+        <div class="row" style="margin-top:8px"><input type="password" id="aiKey" placeholder="sk-ant-..." autocomplete="off" style="flex:1;min-width:0"><button class="btn" type="button" id="aiKeySave">儲存</button></div>
+        <div class="row small" style="margin-top:6px"><span id="aiKeyState" class="muted"></span><button class="ghost" type="button" id="aiKeyDel" style="margin-left:auto">移除金鑰</button></div>
+        <label class="small" style="display:block;margin-top:8px">模型<select id="aiModel" style="width:100%"></select></label>
+      </details>
+    </div>
+  </div>
+  <div class="hl-right">
+    <div class="card">
+      <div class="row" style="margin-bottom:8px"><button class="ghost" id="dPrevDay">‹</button><h2 style="margin:0;flex:1;text-align:center" id="dDay"></h2><button class="ghost" id="dNextDay">›</button></div>
+      <div class="seg" id="dSlotSeg" style="display:inline-flex;margin-bottom:8px"><button class="pbtn" data-s="b">🌅 早餐</button><button class="pbtn" data-s="l">🍱 午餐</button><button class="pbtn" data-s="d">🍽️ 晚餐</button><button class="pbtn" data-s="s">🍪 點心</button></div>
+      <textarea id="dText" rows="2" placeholder="今天吃了什麼？例如：雞腿便當、半糖珍奶、兩顆茶葉蛋、雞胸肉 200g" style="width:100%;box-sizing:border-box"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="btn" id="dParse">🔍 分析</button>
+        <button class="btn hidden" id="dAi" style="background:#8b5cf6">🤖 AI 分析</button>
+        <span class="muted small" id="dAiHint">想分析任何描述？可以在「🤖 AI 分析設定」加上金鑰</span>
+      </div>
+      <div id="dPrevBox" class="dprev hidden">
+        <div id="dPrev"></div>
+        <div id="dUnknown" class="small" style="margin-top:6px;color:var(--amber)"></div>
+        <details class="small" style="margin-top:6px"><summary class="muted" style="cursor:pointer">＋ 手動新增一項</summary>
+          <form id="dManual" class="row" style="margin-top:6px">
+            <input id="dmName" placeholder="名稱" style="width:120px" required><input id="dmK" type="number" min="0" placeholder="熱量" style="width:72px" required>
+            <input id="dmP" type="number" min="0" step="0.1" placeholder="蛋白質 g" style="width:84px"><input id="dmC" type="number" min="0" step="0.1" placeholder="碳水 g" style="width:72px">
+            <input id="dmS" type="number" min="0" step="0.1" placeholder="糖 g" style="width:64px"><input id="dmF" type="number" min="0" step="0.1" placeholder="脂肪 g" style="width:72px">
+            <button class="ghost">加入</button>
+          </form></details>
+        <div class="row" style="margin-top:10px;justify-content:flex-end"><button class="ghost" id="dClear">清除</button><button class="btn" id="dSave">✓ 記錄這一餐</button></div>
+      </div>
+    </div>
+    <div class="card"><h2>今天的營養</h2><div id="dTotals"></div>
+      <div class="muted small" style="margin-top:6px">資料庫數值是常見份量的大約值，店家不同會差很多，只是參考。</div></div>
+    <div class="card"><h2>吃了什麼</h2><div id="dMeals"></div></div>
+  </div>
+ </div>
+</section>
+
+<!-- 健身 -->
+<section id="tab-gym" class="hidden">
+ <div class="hl-layout">
+  <div class="hl-left">
+    <div class="card">
+      <h2>🎯 目標</h2>
+      <form id="gForm" onsubmit="return false">
+        <div class="small muted">目前體重：<span id="gNowW"></span></div>
+        <label class="small" style="display:block;margin-top:8px">目標體重（kg）<input type="number" id="gGoal" min="20" max="300" step="0.1" placeholder="例如 65" style="width:100%"></label>
+        <div class="small" style="margin-top:12px">想要什麼樣的身材？（可以多選）</div>
+        <div id="gShapes" class="gchips"></div>
+        <div class="small" style="margin-top:12px">在哪裡練？</div>
+        <div class="seg" id="gEquip" style="display:inline-flex"><button type="button" class="pbtn" data-v="gym">🏋️ 健身房</button><button type="button" class="pbtn" data-v="db">💪 啞鈴</button><button type="button" class="pbtn" data-v="home">🏠 居家徒手</button></div>
+        <div class="small" style="margin-top:12px">程度</div>
+        <div class="seg" id="gLevel" style="display:inline-flex"><button type="button" class="pbtn" data-v="new">新手</button><button type="button" class="pbtn" data-v="mid">練過一陣子</button></div>
+        <label class="small" style="display:block;margin-top:12px">每週練 <b id="gDaysV"></b> 天<input type="range" id="gDays" min="2" max="6" step="1" style="width:100%"></label>
+      </form>
+    </div>
+    <div class="card"><h2>💡 重點</h2><ul id="gNotes" class="small" style="margin:0;padding-left:18px;line-height:1.7"></ul>
+      <div class="muted small" id="gScheme" style="margin-top:8px"></div></div>
+  </div>
+  <div class="hl-right" id="gPlan"></div>
+ </div>
+</section>
+
 <!-- 番茄鐘 -->
 <section id="tab-pomo" class="hidden">
   <div class="pomo-wrap">
@@ -434,17 +521,20 @@
 </div>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="js/core.js?v=202611270216"></script>
-<script src="js/calendar.js?v=202611270216"></script>
-<script src="js/todo.js?v=202611270216"></script>
-<script src="js/money.js?v=202611270216"></script>
-<script src="js/backup.js?v=202611270216"></script>
-<script src="js/google-calendar.js?v=202611270216"></script>
-<script src="js/drive-sync.js?v=202611270216"></script>
-<script src="js/habits.js?v=202611270216"></script>
-<script src="js/daily-rank.js?v=202611270216"></script>
-<script src="js/health.js?v=202611270216"></script>
-<script src="js/pomodoro.js?v=202611270216"></script>
-<script src="js/main.js?v=202611270216"></script>
+<script src="js/core.js?v=202611270247"></script>
+<script src="js/calendar.js?v=202611270247"></script>
+<script src="js/todo.js?v=202611270247"></script>
+<script src="js/money.js?v=202611270247"></script>
+<script src="js/backup.js?v=202611270247"></script>
+<script src="js/google-calendar.js?v=202611270247"></script>
+<script src="js/drive-sync.js?v=202611270247"></script>
+<script src="js/habits.js?v=202611270247"></script>
+<script src="js/daily-rank.js?v=202611270247"></script>
+<script src="js/health.js?v=202611270247"></script>
+<script src="js/pomodoro.js?v=202611270247"></script>
+<script src="js/food-db.js?v=202611270247"></script>
+<script src="js/diet.js?v=202611270247"></script>
+<script src="js/workout.js?v=202611270247"></script>
+<script src="js/main.js?v=202611270247"></script>
 </body>
 </html>
