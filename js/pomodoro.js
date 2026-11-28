@@ -151,7 +151,7 @@ function notify(msg){try{if('Notification' in window&&Notification.permission===
 /* 頂部的小計時器：在其他分頁也看得到番茄鐘、習慣計時 */
 function renderMini(){
   let h='';
-  if(tab!=='pomo'&&pStarted()){
+  if(tab!=='pomo'&&tab!=='today'&&pStarted()){   // 首頁已經有番茄鐘卡片
     const t=db.todos.find(x=>x.id===P.todoId);
     h+=`<button class="mini" data-go="pomo" style="--c:${P.mode==='focus'?'#e5484d':'#16a34a'}">${P.mode==='focus'?'🍅':'☕'} ${fmtClock(pShown())}${P.running?'':' ⏸'}${t&&P.mode==='focus'?' · '+esc(t.text.slice(0,10)):''}</button>`;
   }

@@ -73,12 +73,31 @@ function reorderSubset(fullSorted,newIds){
   return fullSorted.map(x=>set.has(x.id)?q.shift():x);
 }
 
-/* ---------- 分頁 ---------- */
-let tab='cal';
-$('tabs').onclick=e=>{const b=e.target.closest('button'); if(!b) return; tab=b.dataset.tab;
-  document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('active',x===b));
-  ['cal','todo','money','habit','pomo','rank','health','diet','gym'].forEach(t=>$('tab-'+t).classList.toggle('hidden',t!==tab)); render(); renderMini();};
-const goTab=t=>document.querySelector(`#tabs [data-tab="${t}"]`).click();
+/* ---------- 分頁：底下 5 個大分頁，有些裡面再分小分頁 ---------- */
+const GROUPS={
+  today:[['today','☀️ 今天'],['cal','📅 行事曆'],['todo','✅ 待辦'],['pomo','🍅 番茄鐘']],
+  habit:[['habit','🏃 習慣']],
+  body:[['health','❤️ 健康'],['diet','🥗 飲食'],['gym','🏋️ 健身']],
+  money:[['money','💰 記帳']],
+  me:[['rank','👤 我的']],
+};
+const TABS=Object.values(GROUPS).flat().map(x=>x[0]);
+const grpOf=t=>Object.keys(GROUPS).find(g=>GROUPS[g].some(x=>x[0]===t));
+const grpLast={};            // 每個大分頁上次看的小分頁
+let tab='today';             // 一打開就是「今天」
+function goTab(t){
+  if(!TABS.includes(t)) return;
+  tab=t; const g=grpOf(t), sub=GROUPS[g]; grpLast[g]=t;
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active',b.dataset.grp===g));
+  $('subTabs').innerHTML=sub.length>1?sub.map(([k,l])=>`<button data-tab="${k}" class="${k===t?'active':''}">${l}</button>`).join(''):'';
+  $('subTabs').classList.toggle('hidden',sub.length<2);
+  TABS.forEach(k=>$('tab-'+k).classList.toggle('hidden',k!==t));
+  render(); renderMini();
+}
+// 點大分頁：已經在這一組就回到第一頁（例如在行事曆按「今天」回首頁），否則回到上次看的那頁
+$('tabs').onclick=e=>{const b=e.target.closest('button'); if(!b) return; const g=b.dataset.grp;
+  goTab(grpOf(tab)===g?GROUPS[g][0][0]:(grpLast[g]||GROUPS[g][0][0])); scrollTo({top:0});};
+$('subTabs').onclick=e=>{const b=e.target.closest('[data-tab]'); if(b) goTab(b.dataset.tab);};
 
 /* ---------- 深色／淺色模式：自動（跟系統）→ 淺色 → 深色 ---------- */
 const THEMES={auto:'🌗 自動',light:'☀️ 淺色',dark:'🌙 深色'};

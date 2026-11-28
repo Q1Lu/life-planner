@@ -5,36 +5,60 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>我的生活手帳</title>
 <script>/* 先套用深淺色，避免畫面閃一下 */try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}</script>
-<link rel="stylesheet" href="css/style.css?v=202611281130">
+<link rel="stylesheet" href="css/style.css?v=202611282100">
 </head>
 <body>
 <header>
   <h1>📒 生活手帳</h1>
   <nav id="tabs">
-    <button data-tab="cal" class="active">📅 行事曆</button>
-    <button data-tab="todo">✅ 待辦</button>
-    <button data-tab="money">💰 記帳</button>
-    <button data-tab="habit">🏃 習慣</button>
-    <button data-tab="pomo">🍅 番茄鐘</button>
-    <button data-tab="health">❤️ 健康</button>
-    <button data-tab="diet">🥗 飲食</button>
-    <button data-tab="gym">🏋️ 健身</button>
-    <button data-tab="rank" class="hidden">🏅 段位</button>
+    <button data-grp="today" class="active"><i>☀️</i><span>今天</span></button>
+    <button data-grp="habit"><i>🏃</i><span>習慣</span></button>
+    <button data-grp="body"><i>❤️</i><span>身體</span></button>
+    <button data-grp="money"><i>💰</i><span>記帳</span></button>
+    <button data-grp="me"><i>👤</i><span>我的</span></button>
   </nav>
   <button class="mini" id="rankPill" title="段位與經驗值（點一下看詳情）"></button>
   <div id="miniTimers"></div>
   <div class="spacer"></div>
-  <button class="ghost" id="themeBtn" title="切換深色／淺色模式"></button>
-  <button class="ghost" id="gBtn">🔗 連接 Google 日曆</button>
   <button class="x" id="syncState" style="font-size:13px" title="雲端同步"></button>
-  <button class="ghost" id="exportBtn" title="匯出備份">匯出</button>
-  <button class="ghost" id="importBtn" title="匯入備份">匯入</button>
-  <input type="file" id="importFile" accept=".json" class="hidden">
+  <nav id="subTabs" class="hidden"></nav>
 </header>
 
 <main>
+<!-- 今天（首頁） -->
+<section id="tab-today">
+ <div class="tdy">
+  <div class="tdy-head"><h2 id="tdyDate"></h2><span class="muted" id="tdyHi"></span></div>
+  <div class="card tdy-pomo" id="tdyPomo" title="打開番茄鐘">
+    <div class="tp-ring">🍅</div>
+    <div style="flex:1;min-width:0"><div class="muted small" id="tpMode"></div><div class="tp-time" id="tpTime"></div><div class="small tp-task" id="tpTask"></div></div>
+    <button class="btn" id="tpStart"></button>
+  </div>
+  <div class="tdy-grid">
+    <div class="card">
+      <div class="row tdy-h"><h2>✅ 待辦</h2><span class="muted small" id="tdyTodoCnt"></span><div class="spacer"></div><button class="ghost" data-go="todo">全部 ›</button></div>
+      <form class="row" id="tdyForm" style="margin-bottom:8px"><input type="text" id="tdyText" placeholder="新增今天要做的事" required style="flex:1;min-width:0"><button class="btn">新增</button></form>
+      <ul class="list" id="tdyTodo"></ul>
+    </div>
+    <div class="tdy-side">
+      <div class="card">
+        <div class="row tdy-h"><h2>📅 今天行程</h2><div class="spacer"></div><button class="ghost" data-go="cal">行事曆 ›</button></div>
+        <ul class="list" id="tdyEv"></ul>
+      </div>
+      <div class="card tdy-link" data-go="habit">
+        <div class="row tdy-h"><h2>🏃 今日任務</h2><div class="spacer"></div><span class="muted small" id="tdyHabTxt"></span></div>
+        <div class="tdy-bar"><i id="tdyHabBar"></i></div>
+      </div>
+      <div class="card tdy-link" data-go="money">
+        <div class="row tdy-h"><h2>💰 今天花費</h2><div class="spacer"></div><strong id="tdyMoney"></strong></div>
+      </div>
+    </div>
+  </div>
+ </div>
+</section>
+
 <!-- 行事曆 -->
-<section id="tab-cal" class="cal-layout">
+<section id="tab-cal" class="cal-layout hidden">
   <!-- 側邊欄：寬螢幕固定在左邊，手機則是滑出選單 -->
   <div class="drawer-bg" id="drawerBg">
     <aside class="drawer">
@@ -192,6 +216,15 @@
     <div class="card"><h2>最近 14 天得分</h2><div class="xph" id="rkHist"></div>
       <div class="row muted small" style="margin-top:8px;gap:14px"><span><i class="lg" style="background:var(--amber)"></i>習慣</span><span><i class="lg" style="background:#e5484d"></i>番茄鐘</span><span><i class="lg" style="background:var(--green)"></i>待辦</span></div></div>
     <div class="card"><h2>段位一覽</h2><div id="rkTiers"></div></div>
+    <div class="card"><h2>⚙️ 設定與同步</h2>
+      <div class="set-btns">
+  <button class="ghost" id="themeBtn" title="切換深色／淺色模式"></button>
+  <button class="ghost" id="gBtn">🔗 連接 Google 日曆</button>
+  <button class="ghost" id="exportBtn" title="匯出備份">📤 匯出備份</button>
+  <button class="ghost" id="importBtn" title="匯入備份">📥 匯入備份</button>
+  <input type="file" id="importFile" accept=".json" class="hidden">
+      </div>
+    </div>
   </div>
 </section>
 
@@ -521,21 +554,22 @@
 </div>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="js/core.js?v=202611281130"></script>
-<script src="js/calendar.js?v=202611281130"></script>
-<script src="js/todo.js?v=202611281130"></script>
-<script src="js/money.js?v=202611281130"></script>
-<script src="js/backup.js?v=202611281130"></script>
-<script src="js/google-calendar.js?v=202611281130"></script>
-<script src="js/sync-merge.js?v=202611281130"></script>
-<script src="js/drive-sync.js?v=202611281130"></script>
-<script src="js/habits.js?v=202611281130"></script>
-<script src="js/daily-rank.js?v=202611281130"></script>
-<script src="js/health.js?v=202611281130"></script>
-<script src="js/pomodoro.js?v=202611281130"></script>
-<script src="js/food-db.js?v=202611281130"></script>
-<script src="js/diet.js?v=202611281130"></script>
-<script src="js/workout.js?v=202611281130"></script>
-<script src="js/main.js?v=202611281130"></script>
+<script src="js/core.js?v=202611282100"></script>
+<script src="js/calendar.js?v=202611282100"></script>
+<script src="js/todo.js?v=202611282100"></script>
+<script src="js/money.js?v=202611282100"></script>
+<script src="js/backup.js?v=202611282100"></script>
+<script src="js/google-calendar.js?v=202611282100"></script>
+<script src="js/sync-merge.js?v=202611282100"></script>
+<script src="js/drive-sync.js?v=202611282100"></script>
+<script src="js/habits.js?v=202611282100"></script>
+<script src="js/daily-rank.js?v=202611282100"></script>
+<script src="js/health.js?v=202611282100"></script>
+<script src="js/pomodoro.js?v=202611282100"></script>
+<script src="js/food-db.js?v=202611282100"></script>
+<script src="js/diet.js?v=202611282100"></script>
+<script src="js/workout.js?v=202611282100"></script>
+<script src="js/today.js?v=202611282100"></script>
+<script src="js/main.js?v=202611282100"></script>
 </body>
 </html>
