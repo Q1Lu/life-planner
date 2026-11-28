@@ -263,7 +263,7 @@ function moveOrder(list,item,dir){
   const i=list.indexOf(item), j=i+dir; if(j<0||j>=list.length) return;
   [list[i].order,list[j].order]=[list[j].order,list[i].order];
 }
-$('hToday').onclick=e=>{
+$('hToday').onclick=async e=>{
   const b=e.target.closest('[data-act]'); if(!b) return;
   const act=b.dataset.act, it=db.hitems.find(x=>x.id===b.dataset.i), g=db.hgroups.find(x=>x.id===b.dataset.g);
   switch(act){
@@ -276,7 +276,7 @@ $('hToday').onclick=e=>{
       break;
     case 'inc': case 'dec': setVal(hDay,it,'',Math.max(0,getVal(hDay,it)+(act==='inc'?1:-1)*(it.step||1))); break;
     case 'tstart':
-      if(db.habitTimer){if(!confirm('另一個計時正在進行，要先停止並記錄它嗎？')) return; stopHabit();}
+      if(db.habitTimer){if(!await ask('另一個計時正在進行，要先停止並記錄它嗎？')) return; stopHabit();}
       db.habitTimer={habitId:it.habitId,start:Date.now()}; save(); renderMini(); break;
     case 'tstop': return stopHabit();
     case 'run': return openRoutine(g.id);
@@ -289,7 +289,7 @@ $('hToday').onclick=e=>{
     case 'gedit': return openGroupEd(g);
     case 'gadd': return openGroupEd(null);
     case 'gdel':
-      if(!confirm(`刪除「${g.name}」和裡面的所有項目？`)) return;
+      if(!await ask(`刪除「${g.name}」和裡面的所有項目？`)) return;
       db.hitems=db.hitems.filter(x=>x.groupId!==g.id); db.hgroups=db.hgroups.filter(x=>x!==g); save(); break;
   }
   renderHabit();
@@ -331,7 +331,7 @@ $('hiDays').onclick=e=>{const b=e.target.closest('[data-d]'); if(!b) return; con
 $('hiForm').addEventListener('click',e=>{const q=e.target.dataset.q; if(!q) return; hiDays=q==='all'?['0','1','2','3','4','5','6']:['1','2','3','4','5']; paintSeg('hiDays','d',hiDays);});
 const closeHi=()=>$('hiModal').classList.add('hidden');
 $('hiCancel').onclick=closeHi; $('hiModal').onclick=e=>{if(e.target.id==='hiModal') closeHi();};
-$('hiDel').onclick=()=>{if(confirm(`刪除「${hiEditing.name}」？`)){db.hitems=db.hitems.filter(x=>x!==hiEditing); save(); closeHi(); renderHabit();}};
+$('hiDel').onclick=async()=>{if(await ask(`刪除「${hiEditing.name}」？`)){db.hitems=db.hitems.filter(x=>x!==hiEditing); save(); closeHi(); renderHabit();}};
 $('hiForm').onsubmit=e=>{e.preventDefault();
   const type=$('hiType').value, days=hiDays.map(Number).sort();
   if(type==='supp'&&!hiSlots.length) return alert('請至少選一個時段');

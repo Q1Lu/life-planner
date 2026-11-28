@@ -30,6 +30,8 @@ const habitDay=()=>{const d=new Date(); if(d.getHours()<DAY_START_HOUR) d.setDat
 const dayDiff=s=>Math.round((parse(s)-parse(todayStr()))/864e5);
 const ls=(k,v)=>{try{if(v===undefined) return localStorage.getItem(k); if(v===null) localStorage.removeItem(k); else localStorage.setItem(k,v);}catch(e){}};
 const jget=k=>{try{return JSON.parse(ls(k))}catch(e){return null}};
+// 確認視窗：回傳 Promise<true/false>。網頁版用瀏覽器的 confirm；Claude App 版（claude-app/）會換成畫面內的確認框
+function ask(msg){return Promise.resolve(confirm(msg));}
 
 /* ---------- 拖曳排序（待辦、習慣共用） ----------
    每一列前面放 dragHandle(key)；按住把手就能上下拖（滑鼠、手機都一樣）。

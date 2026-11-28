@@ -1,0 +1,75 @@
+<!-- ===== Claude App 版加的畫面 ===== -->
+<!-- 允許通知（只在電腦 App 裡、還沒問過時出現） -->
+<div class="perm-bar hidden" id="permBar">
+  <span>🔔 要讓生活手帳跳出系統通知、在工作列放圖示、用 Alt+Shift+P 開始番茄鐘嗎？</span>
+  <button class="btn" id="permAsk">允許</button><button class="ghost" id="permLater">之後再說</button>
+</div>
+
+<!-- 迷你浮動計時器 -->
+<div id="miniPomo">
+  <div class="mp-drag"><span class="mp-time" id="mpTime">25:00</span><span class="mp-label" id="mpLabel"></span></div>
+  <div class="mp-btns"><button id="mpGo" title="開始">▶</button><button id="mpFull" title="回到完整視窗">⤢</button></div>
+</div>
+
+<!-- 確認／提示 -->
+<div class="modal-bg hidden" id="askModal">
+  <div class="modal" style="max-width:380px" role="alertdialog" aria-labelledby="askMsg">
+    <p id="askMsg" style="margin:0 0 18px;line-height:1.6;white-space:pre-wrap"></p>
+    <div class="row" style="justify-content:flex-end">
+      <button type="button" class="ghost" id="askCancel">取消</button>
+      <button type="button" class="btn" id="askOk">確定</button>
+    </div>
+  </div>
+</div>
+
+<!-- Google 雲端硬碟備份 -->
+<div class="modal-bg hidden" id="dvModal">
+  <div class="modal" style="max-width:460px">
+    <h2>☁️ Google 雲端硬碟</h2>
+    <div class="br-box">
+      <div><b>🔄 跟網頁版同步</b> <span class="muted small">透過「我的雲端硬碟」裡的「生活手帳同步」資料夾，自動進行</span></div>
+      <div class="row small" style="margin-top:6px"><span id="brState" class="grow"></span><button type="button" class="ghost" id="brNow">立即同步</button></div>
+    </div>
+    <h2 style="margin-top:16px;font-size:15px">備份</h2>
+    <div class="muted small" style="line-height:1.6">把目前所有資料存成一個 .json 檔放到你的 Google 雲端硬碟（「我的雲端硬碟」最上層）。之後可以從這裡還原，或在網頁版用「匯入」讀進去。</div>
+    <button class="btn" id="dvBackup" style="width:100%;margin-top:12px">⬆ 現在備份</button>
+    <div class="small" id="dvMsg" style="margin-top:8px"></div>
+    <h2 style="margin-top:18px;font-size:15px">還原</h2>
+    <ul class="list" id="dvList"><li class="muted">讀取中…</li></ul>
+    <div class="row" style="margin-top:12px;justify-content:flex-end"><button type="button" class="ghost" id="dvClose">關閉</button></div>
+  </div>
+</div>
+
+<!-- 提醒設定 -->
+<div class="modal-bg hidden" id="rmModal">
+  <form class="modal" id="rmForm" onsubmit="return false" style="max-width:460px">
+    <h2>🔔 提醒</h2>
+    <div class="muted small" id="rmNote" style="line-height:1.6"></div>
+    <div class="rm-sec">
+      <label class="rm-ck"><input type="checkbox" id="rmEv"> 📅 行程快開始</label>
+      <div class="row small">開始前 <input type="number" id="rmEvLead" min="0" max="240" style="width:76px"> 分鐘（包含 Google 日曆的行程）</div>
+    </div>
+    <div class="rm-sec">
+      <label class="rm-ck"><input type="checkbox" id="rmTodo"> ⏰ 待辦快截止</label>
+      <div class="row small">截止前 <input type="number" id="rmLead" min="0" max="1440" style="width:76px"> 分鐘提醒一次，到時間再提醒一次</div>
+    </div>
+    <div class="rm-sec">
+      <label class="rm-ck"><input type="checkbox" id="rmSupp"> 💊 保健品還沒吃</label>
+      <div class="row small">早 <input type="time" id="rmS_m"> 午 <input type="time" id="rmS_n"> 晚 <input type="time" id="rmS_e"></div>
+      <div class="muted small">用「習慣」頁裡保健類的項目，那個時段還沒勾才會提醒</div>
+    </div>
+    <div class="rm-sec">
+      <label class="rm-ck"><input type="checkbox" id="rmDaily"> 🏃 今日任務還沒做完</label>
+      <div class="row small">每天 <input type="time" id="rmDailyT"> 提醒還剩幾項</div>
+    </div>
+    <div class="rm-sec">
+      <label class="rm-ck"><input type="checkbox" id="rmMove"> 🧘 起來動一動、喝水</label>
+      <div class="row small">每 <input type="number" id="rmEvery" min="15" max="240" step="5" style="width:70px"> 分鐘，從 <input type="time" id="rmFrom"> 到 <input type="time" id="rmTo"></div>
+    </div>
+    <div class="row" style="margin-top:16px;justify-content:flex-end">
+      <button type="button" class="ghost" id="rmTest" style="margin-right:auto">送一則測試通知</button>
+      <button type="button" class="btn hidden" id="rmPerm">允許通知</button>
+      <button type="button" class="ghost" id="rmClose">關閉</button>
+    </div>
+  </form>
+</div>

@@ -356,7 +356,7 @@ const closeEv=()=>$('evModal').classList.add('hidden');
 $('evCancel').onclick=closeEv;
 $('evModal').onclick=e=>{if(e.target.id==='evModal') closeEv()};
 $('evDel').onclick=async()=>{
-  if(!confirm(editing.recurring?'只刪除這一次的重複行程？':'刪除這個行程？')) return;
+  if(!await ask(editing.recurring?'只刪除這一次的重複行程？':'刪除這個行程？')) return;
   try{
     if(editing.google){await gApi(evPath(editing.calId,editing.gid),'DELETE'); closeEv(); await gSync(true); return;}
     db.events=db.events.filter(x=>x!==editing); save(); closeEv(); render();

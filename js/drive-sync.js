@@ -1,80 +1,79 @@
-/* ---------- Google Drive 雲端同步：待辦、記帳、習慣、番茄鐘、本機行程 ----------
-   每筆資料記下最後修改時間 u；刪除的記在 db.deleted。兩台裝置的資料「逐筆」比較，較新的留下。 */
-const SYNC_KEYS=['events','todos','money','habits','habitLogs','pomos','hgroups','hitems','hdone','xp','health','mcats','body','meals'];
-const DRIVE_NAME='life-planner-data.json';
-const S={busy:false,again:false,timer:null,last:+(ls('syncLast')||0),err:'',fileId:ls('driveFileId')||''};
-let baseSnap=jget('syncSnap');             // 上次存檔時每筆資料的內容，用來找出哪些改過、哪些被刪掉
-const itemHash=it=>{const {u,...rest}=it; return JSON.stringify(rest);};
-function stamp(){
-  const now=Date.now(), cur={}; db.deleted??={};
-  for(const k of SYNC_KEYS) for(const it of db[k]||[]){
-    const h=itemHash(it); cur[it.id]=h;
-    // 沒有時間戳 → 新的；內容跟上次不同 → 改過。預設項目本身帶有舊時間戳，不會蓋掉別台的修改
-    if(!it.u||(baseSnap&&baseSnap[it.id]!==undefined&&baseSnap[it.id]!==h)) it.u=now;
-  }
-  if(baseSnap) for(const id in baseSnap) if(!(id in cur)) db.deleted[id]=now;
-  baseSnap=cur; ls('syncSnap',JSON.stringify(baseSnap));
-}
-window.beforeSave=stamp;
+/* ---------- Google 雲端硬碟同步：網頁版 ↔ Claude App ----------
+   兩邊共用「我的雲端硬碟」裡的「生活手帳同步」資料夾：
+     web.json      網頁版的資料（所有瀏覽器共用這一個，直接更新）
+     app-*.json    Claude App 的資料（Claude 的連接器不能覆寫檔案，所以它每次存新檔、把自己的舊檔丟垃圾桶）
+   每次同步把資料夾裡的檔案全部讀進來逐筆合併（sync-merge.js），再寫回 web.json。
+   以前存在雲端硬碟隱藏資料夾（appDataFolder）的資料，第一次同步時會合併進來。 */
+const SHARED_FOLDER='1zkLk1W1PCg9I8FiujnuWhRjOuB4xbTnK', FOLDER_NAME='生活手帳同步', WEB_FILE='web.json', OLD_NAME='life-planner-data.json';
+const S={busy:false,again:false,timer:null,last:+(ls('syncLast')||0),err:'',folder:ls('lpFolder')||'',fileId:ls('webFileId')||'',seen:jget('driveSeen')||{}};
 window.afterSave=()=>{if(!gReady()) return; clearTimeout(S.timer); S.timer=setTimeout(driveSync,1500);};
-function mergeInto(remote){
-  const del={...(db.deleted||{})};
-  for(const [id,t] of Object.entries(remote.deleted||{})) if(!(del[id]>=t)) del[id]=t;
-  const old=Date.now()-90*864e5; for(const id in del) if(del[id]<old) delete del[id];   // 90 天前的刪除紀錄可以忘掉
-  let changed=false;
-  for(const k of SYNC_KEYS){
-    const map=new Map((db[k]||[]).map(x=>[x.id,x]));
-    for(const r of remote[k]||[]){
-      const l=map.get(r.id);
-      if(!l){map.set(r.id,r); changed=true;}
-      else if((r.u||0)>(l.u||0)){Object.keys(l).forEach(key=>{if(!(key in r)) delete l[key];}); Object.assign(l,r); changed=true;}
-    }
-    db[k]=[...map.values()].filter(x=>{const d=del[x.id]; if(d&&d>=(x.u||0)){changed=true; return false;} return true;});
-  }
-  db.deleted=del;
-  baseSnap={}; for(const k of SYNC_KEYS) for(const it of db[k]) baseSnap[it.id]=itemHash(it);   // 合併結果當成新基準
-  ls('syncSnap',JSON.stringify(baseSnap));
-  try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}
-  return changed;
-}
 async function gFetch(url,opt={}){
   if(!gReady()) throw new Error('尚未連線 Google');
   const r=await fetch(url,{...opt,headers:{Authorization:'Bearer '+G.token,...(opt.headers||{})}});
   if(r.status===401){G.token=null; gSaveTok(); gStatus(); throw new Error('Google 授權已過期，請重新連線');}
   if(!r.ok){
     let m=String(r.status); try{m=(await r.json()).error.message}catch(e){}
-    if(r.status===403&&/scope|insufficient|permission/i.test(m)) throw new Error('還沒有雲端同步的權限：請按「🟢 Google 日曆」→「中斷連線」，再重新連接並勾選所有權限');
+    if(r.status===403&&/scope|insufficient|permission/i.test(m)) throw new Error('還沒有雲端硬碟的權限：請按「🟢 Google 日曆」→「中斷連線」，再重新連接並勾選所有權限');
     throw new Error((r.status===404?'NOT_FOUND ':'')+'Google 雲端硬碟錯誤：'+m);
   }
   return r;
 }
-const payload=()=>{const o={v:1,deleted:db.deleted||{}}; SYNC_KEYS.forEach(k=>o[k]=db[k]); return JSON.stringify(o);};
+const API='https://www.googleapis.com/drive/v3/files', UP='https://www.googleapis.com/upload/drive/v3/files';
+const dq=s=>encodeURIComponent(s);
+async function findFolder(){
+  for(const id of [S.folder,SHARED_FOLDER].filter(Boolean)){
+    try{const f=await (await gFetch(`${API}/${id}?fields=id,trashed,mimeType`)).json(); if(!f.trashed&&f.mimeType==='application/vnd.google-apps.folder') return id;}
+    catch(e){if(!e.message.startsWith('NOT_FOUND')) throw e;}
+  }
+  const q=`name='${FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+  const found=(await (await gFetch(`${API}?q=${dq(q)}&orderBy=createdTime&fields=files(id)`)).json()).files?.[0]?.id;
+  if(found) return found;
+  return (await (await gFetch(`${API}?fields=id`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:FOLDER_NAME,mimeType:'application/vnd.google-apps.folder'})})).json()).id;
+}
+async function mergeText(txt){if(!txt) return false; const rem=JSON.parse(txt); const a=mergeInto(rem), b=dedupeHabits(rem); return a||b;}
 async function driveSync(){
   if(!gReady()) return syncUI();
   if(S.busy){S.again=true; return;}
   S.busy=true; S.err=''; syncUI();
   try{
-    const API='https://www.googleapis.com/drive/v3/files', UP='https://www.googleapis.com/upload/drive/v3/files';
-    if(!S.fileId){
-      const q=encodeURIComponent(`name='${DRIVE_NAME}'`);
-      S.fileId=(await (await gFetch(`${API}?spaces=appDataFolder&q=${q}&fields=files(id)`)).json()).files?.[0]?.id||'';
+    if(!S.folder){S.folder=await findFolder(); ls('lpFolder',S.folder);}
+    let changed=false;
+    // 第一次：把以前隱藏資料夾裡的資料合併進來
+    if(!ls('driveMigrated')){
+      try{
+        const old=(await (await gFetch(`${API}?spaces=appDataFolder&q=${dq(`name='${OLD_NAME}'`)}&fields=files(id)`)).json()).files?.[0]?.id;
+        if(old) changed=await mergeText(await (await gFetch(`${API}/${old}?alt=media`)).text())||changed;
+      }catch(e){}
+      ls('driveMigrated','1');
     }
-    let remoteTxt='';
-    if(S.fileId){
-      try{remoteTxt=await (await gFetch(`${API}/${S.fileId}?alt=media`)).text();}
-      catch(e){if(e.message.startsWith('NOT_FOUND')) S.fileId=''; else throw e;}
+    const q=`'${S.folder}' in parents and trashed=false`;
+    const files=(await (await gFetch(`${API}?q=${dq(q)}&orderBy=modifiedTime desc&pageSize=50&fields=files(id,name,modifiedTime)`)).json()).files||[];
+    const web=files.find(f=>f.name===WEB_FILE);
+    if(web) S.fileId=web.id; else S.fileId='';
+    let webTxt='';
+    for(const f of files.filter(f=>f.name===WEB_FILE||/^app-.*\.json$/.test(f.name)).slice(0,6)){
+      if(f.name!==WEB_FILE&&S.seen[f.id]===f.modifiedTime) continue;   // Claude App 的檔案沒變就不用再讀
+      const txt=await (await gFetch(`${API}/${f.id}?alt=media`)).text();
+      if(f.name===WEB_FILE) webTxt=txt;
+      try{changed=await mergeText(txt)||changed;}catch(e){}            // 壞掉的檔案跳過
+      S.seen[f.id]=f.modifiedTime;
     }
-    if(remoteTxt){const rem=JSON.parse(remoteTxt); const a=mergeInto(rem), b=dedupeHabits(rem); if(a||b) render();}
+    for(const id in S.seen) if(!files.some(f=>f.id===id)) delete S.seen[id];
+    ls('driveSeen',JSON.stringify(S.seen));
+    if(changed) render();
     const out=payload();
-    if(!S.fileId){       // 第一次：建立雲端檔案
-      const b='lp'+Date.now(), meta=JSON.stringify({name:DRIVE_NAME,parents:['appDataFolder']});
+    if(!S.fileId){
+      const b='lp'+Date.now(), meta=JSON.stringify({name:WEB_FILE,parents:[S.folder],mimeType:'application/json'});
       const body=`--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${out}\r\n--${b}--`;
       S.fileId=(await (await gFetch(`${UP}?uploadType=multipart&fields=id`,{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+b},body})).json()).id;
-    }else if(out!==remoteTxt){
+    }else if(out!==webTxt){
       await gFetch(`${UP}/${S.fileId}?uploadType=media`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:out});
     }
-    ls('driveFileId',S.fileId); S.last=Date.now(); ls('syncLast',String(S.last));
-  }catch(err){S.err=err.message.replace(/^NOT_FOUND /,'');}
+    ls('webFileId',S.fileId); S.last=Date.now(); ls('syncLast',String(S.last));
+  }catch(err){
+    S.err=err.message.replace(/^NOT_FOUND /,'');
+    if(/NOT_FOUND/.test(err.message)){S.folder=''; ls('lpFolder',null);}   // 資料夾被刪了：下次重新找或建立
+  }
   S.busy=false; syncUI();
   if(S.again){S.again=false; driveSync();}
 }
@@ -82,11 +81,10 @@ function syncUI(){
   const el=$('syncState');
   if(!gReady()){el.textContent=''; return;}
   el.textContent=S.busy?'☁️ 同步中…':S.err?'⚠️ 同步失敗':S.last?'☁️ 已同步':'☁️';
-  el.title=S.err||(S.last?'雲端同步正常，上次同步 '+new Date(S.last).toLocaleTimeString()+'（點一下立即同步）':'點一下立即同步');
+  el.title=S.err||(S.last?'和 Claude App 透過雲端硬碟「生活手帳同步」資料夾同步，上次同步 '+new Date(S.last).toLocaleTimeString()+'（點一下立即同步）':'點一下立即同步');
   el.style.color=S.err?'var(--red)':'';
 }
 $('syncState').onclick=()=>{if(S.err&&!S.busy) alert(S.err); driveSync();};
 setInterval(()=>{if(gReady()&&!document.hidden) driveSync();},60e3);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&gReady()) driveSync();});
-if(!baseSnap) stamp();                      // 第一次啟用同步：建立基準
 // 第一次同步在 main.js 啟動（等所有檔案都載入後）

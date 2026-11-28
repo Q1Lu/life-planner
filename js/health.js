@@ -98,8 +98,8 @@ $('bpForm').onsubmit=e=>{e.preventDefault();
   if(!sy||!di) return alert('請輸入收縮壓和舒張壓');
   if(sy<=di) return alert('收縮壓（上面的數字）應該比舒張壓大，請確認一下');
   hPut({id:`bp|${hlDate}|${bpSlot}`,type:'bp',date:hlDate,slot:bpSlot,sys:sy,dia:di,...(pu?{pulse:pu}:{})}); renderHealth();};
-const hlClick=e=>{
-  const d=e.target.closest('[data-hdel]'); if(d){if(confirm('刪除這筆紀錄？')){db.health=db.health.filter(x=>x.id!==d.dataset.hdel); save(); renderHealth();} return;}
+const hlClick=async e=>{
+  const d=e.target.closest('[data-hdel]'); if(d){if(await ask('刪除這筆紀錄？')){db.health=db.health.filter(x=>x.id!==d.dataset.hdel); save(); renderHealth();} return;}
   const ib=e.target.closest('[data-ib]'); if(ib){e.preventDefault(); openIb(ib.dataset.ib);}
 };
 $('tab-health').addEventListener('click',hlClick);
@@ -116,7 +116,7 @@ function openIb(date){
 $('ibAdd').onclick=()=>openIb(null);
 const closeIb=()=>$('ibModal').classList.add('hidden');
 $('ibCancel').onclick=closeIb; $('ibModal').onclick=e=>{if(e.target.id==='ibModal') closeIb();};
-$('ibDel').onclick=()=>{if(confirm(`刪除 ${ibEditing.date} 的 InBody 紀錄？`)){db.health=db.health.filter(x=>x!==ibEditing); save(); closeIb(); renderHealth();}};
+$('ibDel').onclick=async()=>{if(await ask(`刪除 ${ibEditing.date} 的 InBody 紀錄？`)){db.health=db.health.filter(x=>x!==ibEditing); save(); closeIb(); renderHealth();}};
 $('ibForm').onsubmit=e=>{e.preventDefault();
   const date=$('ibDate').value, rec={id:'ib|'+date,type:'ib',date};
   IB_FIELDS.forEach(([k])=>{const v=$('ib_'+k).value; if(v!=='') rec[k]=+v;});

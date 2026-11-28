@@ -1,0 +1,32 @@
+/* ===== Claude App 版 ===== */
+/* Google 日曆改走 Claude 的連接器（左邊選單連接），不需要網頁版的 Client ID 設定；也不需要 API 金鑰 */
+.claude-app #gBtn,.claude-app #drawerGear,.claude-app .card:has(#aiKey){display:none!important}
+/* 手機的瀏海、狀態列 */
+header{top:env(safe-area-inset-top,0px)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--card)}
+button.btn.danger{background:var(--red)}
+.br-box{background:var(--bg);border-radius:10px;padding:10px 12px;margin-bottom:4px}
+.br-box .grow{flex:1;min-width:0}
+.rv-out{white-space:pre-wrap;line-height:1.75;font-size:15px}
+.rv-out:empty{display:none}
+.rm-sec{border-top:1px solid var(--line);margin-top:12px;padding-top:12px;display:grid;gap:8px}
+.rm-ck{display:flex!important;gap:8px;align-items:center;color:var(--text)!important;font-size:15px!important;font-weight:600;margin:0!important}
+.rm-ck input{width:auto!important}
+#rmForm{max-height:calc(100vh - 32px);overflow:auto}
+#rmForm input{width:auto}
+.rm-sec input[type=time]{padding:4px 6px}
+.perm-bar{position:fixed;left:0;right:0;bottom:0;z-index:12;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));background:var(--primary-soft);color:var(--text);border-top:1px solid var(--line);font-size:14px;box-shadow:0 -6px 20px rgba(0,0,0,.15)}
+.perm-bar span{flex:1;min-width:200px}
+/* 迷你浮動計時器：整個視窗只剩一個小計時器，按住空白處可以拖動 */
+#miniPomo{display:none}
+.mini-mode body{background:var(--card)}
+.mini-mode body>*:not(#miniPomo):not(.modal-bg){display:none!important}
+.mini-mode body::before{display:none}
+.mini-mode #miniPomo{display:flex;align-items:center;gap:10px;height:100vh;padding:10px 14px;box-sizing:border-box;app-region:drag;-webkit-app-region:drag;user-select:none;-webkit-user-select:none}
+.mp-drag{flex:1;min-width:0;display:flex;flex-direction:column}
+.mp-time{font-size:40px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.mp-label{font-size:12px;color:var(--muted);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mp-btns{display:flex;flex-direction:column;gap:6px;app-region:no-drag;-webkit-app-region:no-drag}
+.mp-btns button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-size:17px;cursor:pointer}
+.mp-btns button:first-child{background:var(--primary);border-color:var(--primary);color:#fff}
+.mp-btns button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}

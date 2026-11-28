@@ -45,8 +45,8 @@ $('pFinish').onclick=()=>{  // 提早結束（正計時就是結束）：記錄�
   if(el<60){alert('專注還不到 1 分鐘，這次不記錄。'); return;}
   pLog(el); if(isUp()) P.cycles++; pSetMode('focus');};
 // 計時方式：倒數（選幾分鐘）／正計時（從 00:00 開始，自己按結束）
-$('pUpSeg').onclick=e=>{const b=e.target.closest('[data-u]'); if(!b) return; const up=b.dataset.u==='1'; if(up===PSET.countUp) return;
-  if(pStarted()&&!confirm('計時中，確定要切換嗎？目前這段不會記錄。')) return;
+$('pUpSeg').onclick=async e=>{const b=e.target.closest('[data-u]'); if(!b) return; const up=b.dataset.u==='1'; if(up===PSET.countUp) return;
+  if(pStarted()&&!await ask('計時中，確定要切換嗎？目前這段不會記錄。')) return;
   PSET.countUp=up; pSaveSet(); pSetMode('focus');};
 /* 選時間：手機上點一下時間，跳出可以上下滑動的滾輪；電腦版用 ⚙️ 設定直接輸入分鐘 */
 const isTouch=()=>matchMedia('(pointer:coarse)').matches;
@@ -88,8 +88,9 @@ $('pwOk').onclick=()=>{
   const m=P.mode, v=Math.max(1,Math.min(PMAX[m],Math.round($('pWheel').scrollTop/WH)+1));
   closeWheel(); if(pStarted()) return;
   PSET[m]=v; pSaveSet(); P.left=pDur(m); pSave(); renderPomo(); renderMini();
-};$('pModeSeg').onclick=e=>{const b=e.target.closest('[data-m]'); if(!b||b.dataset.m===P.mode) return;
-  if(P.running&&!confirm('計時中，確定要切換嗎？目前這段不會記錄。')) return; pSetMode(b.dataset.m);};
+};
+$('pModeSeg').onclick=async e=>{const b=e.target.closest('[data-m]'); if(!b||b.dataset.m===P.mode) return;
+  if(P.running&&!await ask('計時中，確定要切換嗎？目前這段不會記錄。')) return; pSetMode(b.dataset.m);};
 $('pTask').onchange=e=>{P.todoId=e.target.value; pSave(); renderMini();};
 $('pAddTask').onclick=()=>{const v=$('pNewTask').value.trim(); if(!v) return;
   const t={id:uid(),text:v,due:'',pri:2,done:false,created:Date.now()}; db.todos.push(t); save();
@@ -98,7 +99,7 @@ $('pNewTask').onkeydown=e=>{if(e.key==='Enter') $('pAddTask').click();};
 let pPeriod='today';
 function pRange(){const t=habitDay(); if(pPeriod==='today') return [t,addDays(t,1)]; if(pPeriod==='week'){const s=weekStart(t); return [s,addDays(s,7)];} return ['0000','9999'];}
 $('pPeriodSeg').onclick=e=>{const b=e.target.closest('[data-p]'); if(b){pPeriod=b.dataset.p; renderPomo();}};
-$('pLogList').onclick=e=>{const id=e.target.dataset.pdel; if(id&&confirm('刪除這筆專注紀錄？')){db.pomos=db.pomos.filter(p=>p.id!==id); save(); renderPomo();}};
+$('pLogList').onclick=async e=>{const id=e.target.dataset.pdel; if(id&&await ask('刪除這筆專注紀錄？')){db.pomos=db.pomos.filter(p=>p.id!==id); save(); renderPomo();}};
 $('psBox').onchange=()=>{
   ['focus','short','long','every'].forEach(k=>PSET[k]=Math.max(1,Math.round(+$('ps_'+k).value)||PSET[k]));
   PSET.auto=$('ps_auto').checked; ls('pomoSet',JSON.stringify(PSET));

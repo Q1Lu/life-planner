@@ -61,7 +61,7 @@ const closeTd=()=>$('tdModal').classList.add('hidden');
 $('tdPri').onclick=e=>{const b=e.target.closest('[data-v]'); if(b){tdPri=+b.dataset.v; paintPri();}};
 $('tdCancel').onclick=closeTd;
 $('tdModal').onclick=e=>{if(e.target.id==='tdModal') closeTd();};
-$('tdDel').onclick=()=>{if(confirm('刪除這個待辦？')){db.todos=db.todos.filter(x=>x!==tdEditing); save(); closeTd(); render();}};
+$('tdDel').onclick=async()=>{if(await ask('刪除這個待辦？')){db.todos=db.todos.filter(x=>x!==tdEditing); save(); closeTd(); render();}};
 $('tdForm').onsubmit=e=>{e.preventDefault();
   const time=$('tdTime').value;
   Object.assign(tdEditing,{text:$('tdText').value.trim(),due:$('tdDue').value||(time?todayStr():''),dueTime:time,pri:tdPri,done:$('tdDone').checked});
@@ -82,7 +82,7 @@ makeSortable($('todoList'),'todo','li[data-sid]',ids=>{
   reorderSubset([...db.todos].sort(todoCmp),ids).forEach((t,i)=>t.order=i);
   save(); renderTodo();
 });
-$('todoResort').onclick=()=>{
-  if(!confirm('清除手動排序，改回依截止時間排序？')) return;
+$('todoResort').onclick=async()=>{
+  if(!await ask('清除手動排序，改回依截止時間排序？')) return;
   db.todos.forEach(t=>{delete t.order;}); save(); renderTodo();
 };

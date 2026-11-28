@@ -77,4 +77,4 @@ function renderMoney(){
   const rows=Object.entries(by).sort((a,b)=>b[1]-a[1]); const max=rows[0]?.[1]||1;
   $('catBars').innerHTML=rows.map(([c,v])=>`<div class="bar-row"><span>${esc(c)}</span><div class="bar-bg"><div class="bar" style="width:${v/max*100}%"></div></div><span style="text-align:right">${money(v)} <span class="muted" style="font-size:12px">${Math.round(v/exp*100)}%</span></span></div>`).join('')||'<div class="muted">沒有支出資料</div>';
 }
-$('moneyList').onclick=e=>{if(e.target.dataset.del&&confirm('刪除這筆紀錄？')){db.money=db.money.filter(x=>x.id!==e.target.dataset.del);save();renderMoney();}};
+$('moneyList').onclick=async e=>{if(e.target.dataset.del&&await ask('刪除這筆紀錄？')){db.money=db.money.filter(x=>x.id!==e.target.dataset.del);save();renderMoney();}};

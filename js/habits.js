@@ -50,14 +50,14 @@ function stopHabit(){
   else db.habitLogs.push({id:uid(),habitId:T.habitId,date:ymd(new Date(T.start)),min,note:''});
   save(); renderHabit(); renderMini();
 }
-$('habitGrid').onclick=e=>{
+$('habitGrid').onclick=async e=>{
   const card=e.target.closest('[data-h]'); if(!card) return; const id=card.dataset.h;
   if(e.target.closest('[data-hdel]')){
-    if(!confirm('刪除這個習慣和它的所有紀錄？')) return;
+    if(!await ask('刪除這個習慣和它的所有紀錄？')) return;
     db.habits=db.habits.filter(h=>h.id!==id); db.habitLogs=db.habitLogs.filter(l=>l.habitId!==id);
     if(db.habitTimer?.habitId===id) db.habitTimer=null; save(); renderHabit(); renderMini(); return;}
   if(e.target.closest('[data-hstart]')){
-    if(db.habitTimer){ if(!confirm('另一個習慣正在計時，要先停止並記錄它嗎？')) return; stopHabit(); }
+    if(db.habitTimer){ if(!await ask('另一個習慣正在計時，要先停止並記錄它嗎？')) return; stopHabit(); }
     db.habitTimer={habitId:id,start:Date.now()}; save(); renderHabit(); renderMini(); return;}
   if(e.target.closest('[data-hstop]')) return stopHabit();
   if(e.target.closest('[data-hadd]')) card.querySelector('[data-hform]').classList.toggle('hidden');
@@ -90,4 +90,4 @@ function renderHabitStats(){
 $('hPeriodSeg').onclick=e=>{const b=e.target.closest('[data-p]'); if(b){hPeriod=b.dataset.p; renderHabitStats();}};
 const hShift=n=>{if(hPeriod==='week') hAnchor=addDays(hAnchor,7*n); else{const d=parse(hAnchor); hAnchor=ymd(new Date(d.getFullYear(),d.getMonth()+n,1));} renderHabitStats();};
 $('hPrev').onclick=()=>hShift(-1); $('hNext').onclick=()=>hShift(1);
-$('hLogList').onclick=e=>{const id=e.target.dataset.ldel; if(id&&confirm('刪除這筆紀錄？')){db.habitLogs=db.habitLogs.filter(l=>l.id!==id); save(); renderHabit();}};
+$('hLogList').onclick=async e=>{const id=e.target.dataset.ldel; if(id&&await ask('刪除這筆紀錄？')){db.habitLogs=db.habitLogs.filter(l=>l.id!==id); save(); renderHabit();}};

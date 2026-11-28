@@ -4,8 +4,9 @@ const GOOGLE_CLIENT_ID='201482397631-1i2oiqjf43l8skh79pjsrimpdomiel4r.apps.googl
 const GCOL={1:'#7986cb',2:'#33b679',3:'#8e24aa',4:'#e67c73',5:'#f6bf26',6:'#f4511e',7:'#039be5',8:'#616161',9:'#3f51b5',10:'#0b8043',11:'#d50000'};
 const TZ=Intl.DateTimeFormat().resolvedOptions().timeZone;
 // calendar.events：讀寫行程；calendarlist.readonly：列出你有哪些日曆
-// drive.appdata：只能存取這個 App 自己在雲端硬碟的隱藏資料夾，看不到你其他檔案
-const SCOPES='https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/drive.appdata';
+// drive：讀寫雲端硬碟「生活手帳同步」資料夾（Claude App 放進去的檔案也要讀得到，所以要完整的雲端硬碟權限）
+// drive.appdata：讀以前存在隱藏資料夾的舊資料（只在第一次同步時合併一次）
+const SCOPES='https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.appdata';
 const G={clientId:ls('gClientId')||GOOGLE_CLIENT_ID,want:ls('gConnected')==='1',token:null,exp:0,tc:null,tcId:'',events:[],range:'',busy:false,err:'',
   cals:[],show:jget('gShow')||['primary'],def:ls('gDef')||'primary'};
 const gReady=()=>!!(G.token&&Date.now()<G.exp);
@@ -133,7 +134,7 @@ $('gDisconnect').onclick=()=>{
   Object.assign(G,{token:null,exp:0,want:false,events:[],range:'',err:'',cals:[],calErr:''}); ls('gConnected',null); gSaveTok();
   gStatus(); render();};
 $('gUpload').onclick=async()=>{
-  if(!confirm(`要把 ${db.events.length} 筆本機行程上傳到 Google 日曆嗎？上傳成功的會從本機移除，之後以 Google 上的為準。`)) return;
+  if(!await ask(`要把 ${db.events.length} 筆本機行程上傳到 Google 日曆嗎？上傳成功的會從本機移除，之後以 Google 上的為準。`)) return;
   let ok=0;
   for(const ev of [...db.events]){
     try{await gApi(evPath(G.def),'POST',toG(ev)); db.events=db.events.filter(x=>x!==ev); ok++;}

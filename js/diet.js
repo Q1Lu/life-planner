@@ -67,6 +67,8 @@ const AI_SCHEMA={type:'object',additionalProperties:false,required:['items'],pro
   required:['name','amount','kcal','protein_g','carbs_g','sugar_g','fat_g','fiber_g','sodium_mg'],
   properties:{name:{type:'string'},amount:{type:'string'},kcal:{type:'number'},protein_g:{type:'number'},carbs_g:{type:'number'},sugar_g:{type:'number'},fat_g:{type:'number'},fiber_g:{type:'number'},sodium_mg:{type:'number'}}}}}};
 const AI_SYSTEM='你是台灣的營養師。使用者會用中文描述吃了什麼（可能是台灣外食、便利商店、手搖飲）。把內容拆成一項一項的食物，估計每一項的份量和營養素（熱量 kcal、蛋白質、碳水、糖、脂肪、膳食纖維 g、鈉 mg）。沒寫份量就用台灣常見的一份。name 用繁體中文，amount 寫你假設的份量（例如「1 碗約 200g」）。只回傳 JSON。';
+// 有沒有辦法用 AI 分析（網頁版要有金鑰；Claude App 版改用 Claude 本身，會覆寫這個函式）
+function hasAI(){return !!ls('claudeKey');}
 let anthropicMod=null;
 async function aiAnalyze(text){
   const key=ls('claudeKey'); if(!key) throw new Error('還沒有設定 Claude API 金鑰');
@@ -122,7 +124,7 @@ function renderDiet(){
   }).join('')||'<div class="muted">這天還沒有紀錄</div>';
   renderDietPreview();
   // AI 設定
-  const hasKey=!!ls('claudeKey');
+  const hasKey=hasAI();
   $('dAi').classList.toggle('hidden',!hasKey); $('dAiHint').classList.toggle('hidden',hasKey);
   $('aiKeyState').textContent=hasKey?'✅ 已設定（只存在這台裝置）':'尚未設定';
   $('aiModel').value=ls('claudeModel')||'claude-opus-5-5';
@@ -133,7 +135,7 @@ function renderDietPreview(){
     <label class="small">× <input type="number" step="0.5" min="0" value="${it.qty}" data-pq="${i}" style="width:62px"></label>
     <span class="small" style="min-width:120px;text-align:right">${Math.round(it.k)} kcal · P ${Math.round(it.p)} g</span><button class="x" data-pdel="${i}">✕</button></div>`).join('')+
     (dPrev.length>1?`<div class="dp-it" style="font-weight:600"><span class="grow">合計</span><span class="small">${Math.round(dPrev.reduce((a,x)=>a+x.k,0))} kcal · P ${Math.round(dPrev.reduce((a,x)=>a+x.p,0))} g · 糖 ${Math.round(dPrev.reduce((a,x)=>a+x.s,0))} g</span></div>`:'');
-  $('dUnknown').innerHTML=dUnknown.length?`⚠️ 資料庫裡找不到：${dUnknown.map(esc).join('、')}${ls('claudeKey')?'（可以按「🤖 AI 分析」）':'（可以手動新增，或在下方設定 AI）'}`:'';
+  $('dUnknown').innerHTML=dUnknown.length?`⚠️ 資料庫裡找不到：${dUnknown.map(esc).join('、')}${hasAI()?'（可以按「🤖 AI 分析」）':'（可以手動新增，或在下方設定 AI）'}`:'';
   $('dSave').disabled=!dPrev.length;
 }
 // 身體資料
@@ -156,10 +158,11 @@ $('dParse').onclick=()=>{
 };
 $('dAi').onclick=async()=>{
   const t=$('dText').value.trim(); if(!t) return $('dText').focus(); if(dBusy) return;
+  const label=$('dAi').textContent;
   dBusy=true; $('dAi').textContent='🤖 分析中…'; $('dAi').disabled=true;
   try{dPrev=[...dPrev,...await aiAnalyze(t)]; dUnknown=[];}
   catch(err){alert('AI 分析失敗：'+(err?.status===401?'金鑰不正確或已失效':err?.message||err));}
-  dBusy=false; $('dAi').textContent='🤖 AI 分析'; $('dAi').disabled=false; renderDietPreview();
+  dBusy=false; $('dAi').textContent=label; $('dAi').disabled=false; renderDietPreview();
 };
 $('dText').onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault(); $('dParse').click();}};
 $('dPrev').addEventListener('change',e=>{const i=e.target.dataset.pq; if(i==null) return; const it=dPrev[+i]; it.qty=Math.max(0,+e.target.value||0); mealScale(it); renderDietPreview();});
@@ -178,9 +181,9 @@ $('dManual').onsubmit=e=>{e.preventDefault();
   const it={name:n,unit:'',qty:1,src:'manual',base:{k,p:+$('dmP').value||0,c:+$('dmC').value||0,s:+$('dmS').value||0,f:+$('dmF').value||0,fi:0,na:0}};
   dPrev.push(mealScale(it)); e.target.reset(); renderDietPreview();
 };
-$('dMeals').onclick=e=>{const id=e.target.dataset.mdel; if(id&&confirm('刪除這筆？')){db.meals=db.meals.filter(m=>m.id!==id); save(); renderDiet();}};
+$('dMeals').onclick=async e=>{const id=e.target.dataset.mdel; if(id&&await ask('刪除這筆？')){db.meals=db.meals.filter(m=>m.id!==id); save(); renderDiet();}};
 // AI 設定（金鑰只存在這台裝置，不會同步）
 $('aiModel').innerHTML=AI_MODELS.map(([v,t])=>`<option value="${v}">${t}</option>`).join('');
 $('aiModel').onchange=e=>ls('claudeModel',e.target.value);
 $('aiKeySave').onclick=()=>{const v=$('aiKey').value.trim(); if(!v) return; ls('claudeKey',v); $('aiKey').value=''; renderDiet();};
-$('aiKeyDel').onclick=()=>{if(confirm('從這台裝置移除 Claude API 金鑰？')){ls('claudeKey',null); renderDiet();}};
+$('aiKeyDel').onclick=async()=>{if(await ask('從這台裝置移除 Claude API 金鑰？')){ls('claudeKey',null); renderDiet();}};
